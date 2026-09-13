@@ -1,0 +1,12 @@
+services:
+  - type: web
+    name: friday-backend
+    runtime: node
+    plan: free
+    buildCommand: npm ci && npm run build
+    startCommand: NODE_ENV=production node dist/server.cjs
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: GEMINI_API_KEY
+        sync: false

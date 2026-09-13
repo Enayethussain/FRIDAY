@@ -1,0 +1,12 @@
+{
+  "appId": "com.friday.ai",
+  "appName": "FRIDAY",
+  "webDir": "dist",
+  "server": {
+    "cleartext": true,
+    "androidScheme": "https"
+  },
+  "android": {
+    "allowMixedContent": true
+  }
+}
