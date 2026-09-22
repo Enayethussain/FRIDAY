@@ -16,7 +16,7 @@ export const HUDImageGenerator: React.FC<HUDImageGeneratorProps> = ({ isOpen, th
   const [isGenerating, setIsGenerating] = useState(false);
   const [generatedImage, setGeneratedImage] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const currentTheme = THEMES[theme] || THEMES.cyan;
+  const currentTheme = THEMES[theme] || THEMES.amber;
 
   if (!isOpen) return null;
 
@@ -55,13 +55,13 @@ export const HUDImageGenerator: React.FC<HUDImageGeneratorProps> = ({ isOpen, th
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-[#020617]/80 backdrop-blur-md p-4 animate-in fade-in">
       <div
-        className="relative w-full max-w-2xl bg-[#0a0f1d] border rounded-2xl flex flex-col shadow-2xl overflow-hidden"
+        className="relative w-full max-w-2xl bg-[#080A0D] border rounded-2xl flex flex-col shadow-2xl overflow-hidden"
         style={{
           borderColor: `${currentTheme.primary}44`,
           boxShadow: `0 0 30px ${currentTheme.primary}15`,
         }}
       >
-        <div className="flex items-center justify-between px-5 py-4 border-b border-slate-800 bg-[#05070f]/60">
+        <div className="flex items-center justify-between px-5 py-4 border-b border-slate-800 bg-[#030405]/60">
           <div className="flex items-center gap-3">
             <div
               className="w-8 h-8 rounded-lg flex items-center justify-center border font-mono"
@@ -98,7 +98,7 @@ export const HUDImageGenerator: React.FC<HUDImageGeneratorProps> = ({ isOpen, th
               onChange={(e) => setPrompt(e.target.value)}
               placeholder="Describe the image you want to generate..."
               disabled={isGenerating}
-              className="flex-1 bg-slate-900 border border-slate-700 rounded-xl px-4 py-2.5 text-sm font-mono text-slate-100 focus:outline-none focus:border-cyan-500 disabled:opacity-50 transition-colors"
+              className="flex-1 bg-slate-900 border border-slate-700 rounded-xl px-4 py-2.5 text-sm font-mono text-slate-100 focus:outline-none focus:border-amber-500 disabled:opacity-50 transition-colors"
             />
             <button
               type="submit"

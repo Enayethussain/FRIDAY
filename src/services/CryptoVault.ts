@@ -76,8 +76,15 @@ export async function verifyPin(pin: string, stored: PinHash): Promise<boolean> 
     if (stored.algo === 'argon2id' && stored.encoded) {
       const a2 = await loadArgon2();
       if (!a2) return false; // argon2 hash ko PBKDF2 se verify karna jhooth hoga
-      const r = await a2.verify({ pass: pin, encoded: stored.encoded });
-      return !!r.correct;
+      try {
+        const r: any = await a2.verify({ pass: pin, encoded: stored.encoded });
+        // argon2-browser convention: resolve (undefined) = match, reject = mismatch.
+        // Kuch builds { correct: boolean } dete hain — dono handle karo.
+        if (r && typeof r.correct === 'boolean') return r.correct;
+        return true;
+      } catch {
+        return false; // mismatch
+      }
     }
     if (!stored.salt || !stored.iterations) return false;
     const salt = b64ToBytes(stored.salt);

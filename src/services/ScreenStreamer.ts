@@ -3,7 +3,7 @@
  * Captures live screen, application window, or browser tab video stream
  * via navigator.mediaDevices.getDisplayMedia at 1 FPS.
  * Converts frames into crisp JPEG base64 strings streamed to Gemini Live
- * so FRIDAY can observe, debug code, inspect documents, and teach step-by-step.
+ * so JARVIS can observe, debug code, inspect documents, and teach step-by-step.
  */
 
 export class ScreenStreamer {
@@ -26,7 +26,7 @@ export class ScreenStreamer {
     this.onEndedCallback = onEnded || null;
 
     if (!navigator.mediaDevices || !navigator.mediaDevices.getDisplayMedia) {
-      throw new Error('Screen sharing is not available on mobile. Use Camera feed instead — FRIDAY can still see you.');
+      throw new Error('Screen sharing is not available on mobile. Use Camera feed instead — JARVIS can still see you.');
     }
 
     this.videoElement = document.createElement('video');

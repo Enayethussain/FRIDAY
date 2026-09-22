@@ -15,7 +15,7 @@ export const HUDMediaViewport: React.FC<HUDMediaViewportProps> = ({
   onClose,
 }) => {
   const [isExpanded, setIsExpanded] = React.useState(false);
-  const currentTheme = THEMES[theme] || THEMES.cyan;
+  const currentTheme = THEMES[theme] || THEMES.amber;
 
   if (!viewport.isOpen) return null;
 

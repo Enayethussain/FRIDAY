@@ -46,7 +46,7 @@ export const DynamicWaveform: React.FC<DynamicWaveformProps> = ({
     const render = () => {
       ctx.clearRect(0, 0, width, height);
 
-      const themeConfig = THEMES[theme] || THEMES.cyan;
+      const themeConfig = THEMES[theme] || THEMES.amber;
       const primaryColor = themeConfig.primary;
       const lightColor = themeConfig.primaryLight;
 

@@ -9,6 +9,17 @@
  */
 
 import * as faceapi from 'face-api.js';
+import {
+  FaceError,
+  clampBox,
+  ensureVerifiedModels,
+  parseTensorMismatch,
+  validateDescriptor,
+  type FaceErrorCode,
+} from './FaceModelLoader';
+
+export { FaceError };
+export type { FaceErrorCode };
 
 const STORAGE_KEY = 'friday_face_profile';
 const MODEL_URL = '/models';
@@ -50,13 +61,21 @@ export class FaceAuthManager {
     if (this.modelsLoaded) return;
     if (this.loadPromise) return this.loadPromise;
     this.loadPromise = (async () => {
-      console.log('[FaceAuth] Loading face models...');
-      await faceapi.nets.tinyFaceDetector.loadFromUri(MODEL_URL);
-      await faceapi.nets.faceLandmark68Net.loadFromUri(MODEL_URL);
-      await faceapi.nets.faceRecognitionNet.loadFromUri(MODEL_URL);
+      console.log('[FaceAuth] Loading face models (integrity-verified)...');
+      // Verified bytes are served to face-api.js, so a truncated shard can
+      // never reach tensor decode: mismatch aborts here as MODEL_LOAD_ERROR.
+      await ensureVerifiedModels(MODEL_URL, async () => {
+        await faceapi.nets.tinyFaceDetector.loadFromUri(MODEL_URL);
+        await faceapi.nets.faceLandmark68Net.loadFromUri(MODEL_URL);
+        await faceapi.nets.faceRecognitionNet.loadFromUri(MODEL_URL);
+      });
       this.modelsLoaded = true;
-      console.log('[FaceAuth] Face models loaded');
-    })();
+      console.log('[FaceAuth] Face models loaded and verified');
+    })().catch((e) => {
+      // Allow a genuine retry on next open (clears the stuck promise).
+      this.loadPromise = null;
+      throw e;
+    });
     return this.loadPromise;
   }
 
@@ -77,15 +96,74 @@ export class FaceAuthManager {
     return this.matchThreshold;
   }
 
+  /** Frame must carry real pixels before any inference is attempted. */
+  private assertVideoReady(video: HTMLVideoElement): void {
+    const w = (video as HTMLVideoElement).videoWidth || 0;
+    const h = (video as HTMLVideoElement).videoHeight || 0;
+    const ready = (video as HTMLVideoElement).readyState >= 2;
+    if (!ready || w <= 0 || h <= 0) {
+      throw new FaceError(
+        'FRAME_NOT_READY',
+        'Camera frame taiyaar nahi hai. Thoda ruk kar dobara try karo.',
+        `readyState=${(video as HTMLVideoElement).readyState} video=${w}x${h}`
+      );
+    }
+  }
+
   /** Ek video frame se face descriptor nikalo (null = chehra nahi mila) */
   async describeFrame(video: HTMLVideoElement): Promise<Float32Array | null> {
     await this.loadModels();
-    const detection = await faceapi
-      .detectSingleFace(video, new faceapi.TinyFaceDetectorOptions({ inputSize: 320, scoreThreshold: 0.4 }))
-      .withFaceLandmarks()
-      .withFaceDescriptor();
+    this.assertVideoReady(video);
+    let detection: any;
+    try {
+      detection = await (faceapi
+        .detectSingleFace(video, new faceapi.TinyFaceDetectorOptions({ inputSize: 320, scoreThreshold: 0.4 })) as any)
+        .withFaceLandmarks()
+        .withFaceDescriptor();
+    } catch (e: any) {
+      // A tfjs shape error here means model decode/inference broke mid-run —
+      // never a camera problem, never silently swallowed.
+      const parsed = parseTensorMismatch(e?.message || '');
+      if (parsed) {
+        try {
+          console.log(
+            `[FaceAuth] MODEL_INPUT_MISMATCH expectedShape=${parsed.shape} ` +
+            `expectedElements=${parsed.expected} actualElements=${parsed.actual} dataType=float32`
+          );
+        } catch { /* logging never breaks auth */ }
+      }
+      throw new FaceError(
+        'MODEL_INFERENCE_ERROR',
+        'Camera verification temporarily failed. Please try again.',
+        `inference failed: ${(e?.message || e).toString().slice(0, 200)}`
+      );
+    }
     if (!detection) return null;
-    return detection.descriptor;
+    // Bounding-box sanity: clamp into frame; reject empty/invalid crops
+    // instead of sending garbage downstream.
+    const box = detection?.detection?.box;
+    const score = detection?.detection?.score;
+    if (box && typeof score === 'number') {
+      const clamped = clampBox(
+        { x: box.x, y: box.y, width: box.width, height: box.height },
+        video.videoWidth,
+        video.videoHeight
+      );
+      if (!clamped || score < 0.4) return null;
+    }
+    const descriptor = detection.descriptor as unknown;
+    if (!validateDescriptor(descriptor)) {
+      try {
+        const len = (descriptor as ArrayLike<number>)?.length;
+        console.log(`[FaceAuth] MODEL_INPUT_MISMATCH descriptor invalid length=${len} expected=128`);
+      } catch { /* logging never breaks auth */ }
+      throw new FaceError(
+        'MODEL_INFERENCE_ERROR',
+        'Camera verification temporarily failed. Please try again.',
+        'descriptor failed validation (length/finite check)'
+      );
+    }
+    return descriptor as Float32Array;
   }
 
   /** Enrollment: 3 samples ka average descriptor banao + save karo */
@@ -121,7 +199,7 @@ export class FaceAuthManager {
     this.enrolledDescriptor = avg;
     this.persist();
     console.log('[FaceAuth] Face enrollment complete (local only)');
-    return { success: true, message: 'Chehra register ho gaya. Ab FRIDAY aapko pehchanega.' };
+    return { success: true, message: 'Chehra register ho gaya. Ab JARVIS aapko pehchanega.' };
   }
 
   /** Live verification: enrolled descriptor se compare karo */

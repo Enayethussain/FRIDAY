@@ -108,7 +108,7 @@ class HapticFeedbackEngine {
         break;
 
       case 'speaking':
-        // Rhythmic double pulse: FRIDAY generating and streaming response
+        // Rhythmic double pulse: JARVIS generating and streaming response
         this.vibrate([25, 40, 30]);
         break;
 

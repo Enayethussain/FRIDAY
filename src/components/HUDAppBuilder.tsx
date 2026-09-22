@@ -78,9 +78,9 @@ export function HUDAppBuilder({ isOpen, onClose }: { isOpen: boolean; onClose: (
 
   return (
     <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/80 backdrop-blur-sm p-4">
-      <div className="w-full max-w-xl max-h-[85vh] overflow-y-auto bg-gradient-to-br from-slate-900/95 to-slate-800/95 rounded-2xl border border-cyan-500/30 p-6">
+      <div className="w-full max-w-xl max-h-[85vh] overflow-y-auto bg-gradient-to-br from-slate-900/95 to-slate-800/95 rounded-2xl border border-amber-500/30 p-6">
         <div className="flex items-center justify-between mb-1">
-          <h2 className="text-xl font-bold text-white flex items-center gap-2"><Hammer className="w-6 h-6 text-cyan-400" /> Cloud App Builder <span className="text-xs font-normal text-slate-400">v1 ☁️</span></h2>
+          <h2 className="text-xl font-bold text-white flex items-center gap-2"><Hammer className="w-6 h-6 text-amber-400" /> Cloud App Builder <span className="text-xs font-normal text-slate-400">v1 ☁️</span></h2>
           <button onClick={onClose} className="p-2 text-slate-400 hover:text-white"><XCircle className="w-5 h-5" /></button>
         </div>
         <p className="text-xs text-slate-400 mb-3">
@@ -89,16 +89,16 @@ export function HUDAppBuilder({ isOpen, onClose }: { isOpen: boolean; onClose: (
         </p>
         <div className="flex gap-2 mb-3">
           <input value={req} onChange={(e) => setReq(e.target.value)} onKeyDown={(e) => e.key === 'Enter' && build()}
-            placeholder='e.g. "ek calculator app banao"' className="flex-1 px-3 py-2 rounded-xl bg-slate-800 border border-slate-700 text-white text-sm focus:outline-none focus:border-cyan-500" />
-          <button disabled={busy || !req.trim()} onClick={build} className="px-4 py-2 rounded-xl bg-cyan-600 hover:bg-cyan-500 disabled:opacity-50 text-white font-semibold text-sm flex items-center gap-1.5"><Play className="w-4 h-4" /> {busy ? 'Working…' : 'Build'}</button>
+            placeholder='e.g. "ek calculator app banao"' className="flex-1 px-3 py-2 rounded-xl bg-slate-800 border border-slate-700 text-white text-sm focus:outline-none focus:border-amber-500" />
+          <button disabled={busy || !req.trim()} onClick={build} className="px-4 py-2 rounded-xl bg-amber-600 hover:bg-amber-500 disabled:opacity-50 text-white font-semibold text-sm flex items-center gap-1.5"><Play className="w-4 h-4" /> {busy ? 'Working…' : 'Build'}</button>
         </div>
 
         {job && (
-          <div className="rounded-xl border border-cyan-500/30 bg-black/50 p-3 mb-3">
-            <p className="text-xs font-mono text-cyan-200 mb-2">{job.id} — <b>{job.status}</b> {job.appId ? `• ${job.appId}` : ''}</p>
+          <div className="rounded-xl border border-amber-500/30 bg-black/50 p-3 mb-3">
+            <p className="text-xs font-mono text-amber-200 mb-2">{job.id} — <b>{job.status}</b> {job.appId ? `• ${job.appId}` : ''}</p>
             <div className="flex flex-wrap gap-1 mb-2">
               {STAGES.map((s, i) => (
-                <span key={s} className={`text-[10px] font-mono px-1.5 py-0.5 rounded ${i < stageIdx ? 'bg-emerald-600/40 text-emerald-200' : i === stageIdx ? 'bg-cyan-600/60 text-white' : 'bg-slate-700/60 text-slate-400'}`}>{i < stageIdx ? '✓ ' : ''}{s}</span>
+                <span key={s} className={`text-[10px] font-mono px-1.5 py-0.5 rounded ${i < stageIdx ? 'bg-emerald-600/40 text-emerald-200' : i === stageIdx ? 'bg-amber-600/60 text-white' : 'bg-slate-700/60 text-slate-400'}`}>{i < stageIdx ? '✓ ' : ''}{s}</span>
               ))}
             </div>
             <div className="font-mono text-[11px] text-emerald-200 max-h-[140px] overflow-y-auto whitespace-pre-wrap">
@@ -130,7 +130,7 @@ export function HUDAppBuilder({ isOpen, onClose }: { isOpen: boolean; onClose: (
                 }} className="p-2 text-red-400 hover:text-red-300"><Trash2 className="w-4 h-4" /></button>
               </div>
               <div className="flex gap-2 mt-1">
-                {a.downloadUrl && <a href={a.downloadUrl} className="text-[11px] text-cyan-300 underline flex items-center gap-1"><FolderOpen className="w-3 h-3" /> Download ZIP</a>}
+                {a.downloadUrl && <a href={a.downloadUrl} className="text-[11px] text-amber-300 underline flex items-center gap-1"><FolderOpen className="w-3 h-3" /> Download ZIP</a>}
               </div>
             </div>
           ))}

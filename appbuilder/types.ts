@@ -1,10 +1,10 @@
-// FRIDAY App Builder — isolated add-on. No existing FRIDAY code is imported or modified.
+// JARVIS App Builder — isolated add-on. No existing JARVIS code is imported or modified.
 export type AppKind = 'calculator' | 'tictactoe';
 
 export interface AppSpec {
   kind: AppKind;
   name: string;
-  theme: 'dark' | 'light' | 'friday';
+  theme: 'dark' | 'light' | 'jarvis';
   features: string[];
   rawRequest: string;
 }

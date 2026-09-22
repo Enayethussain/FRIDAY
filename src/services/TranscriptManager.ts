@@ -15,7 +15,7 @@ class TranscriptManagerService {
 
   constructor() {
     // Initial system entry
-    this.addEntry('system', 'Neural Link initialized. FRIDAY Voice & Multimodal HUD Online.');
+    this.addEntry('system', 'Neural Link initialized. JARVIS Voice & Multimodal HUD Online.');
   }
 
   addEntry(
@@ -45,7 +45,7 @@ class TranscriptManagerService {
 
   getStats(): SessionDebriefStats {
     const userTurns = this.entries.filter((e) => e.sender === 'user').length;
-    const assistantTurns = this.entries.filter((e) => e.sender === 'friday').length;
+    const assistantTurns = this.entries.filter((e) => e.sender === 'jarvis').length;
     const toolsInvokedCount = this.entries.filter((e) => e.sender === 'tool' || !!e.toolName).length;
     const duration = Math.max(1, Math.round((Date.now() - this.sessionStartTime) / 1000));
     const curr = globalCurriculumManager.getCurriculum();
@@ -126,7 +126,7 @@ class TranscriptManagerService {
       const time = new Date(entry.timestamp).toLocaleTimeString();
       let senderBadge = 'SYSTEM';
       if (entry.sender === 'user') senderBadge = `COMMANDER (${profile.callSign})`;
-      else if (entry.sender === 'friday') senderBadge = 'FRIDAY';
+      else if (entry.sender === 'jarvis') senderBadge = 'FRIDAY';
       else if (entry.sender === 'tool') senderBadge = `TOOL [${entry.toolName || 'EXECUTION'}]`;
 
       md += `### [${time}] ${senderBadge}\n`;

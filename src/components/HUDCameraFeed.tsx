@@ -17,7 +17,7 @@ export const HUDCameraFeed: React.FC<HUDCameraFeedProps> = ({
   onClose,
 }) => {
   const containerRef = useRef<HTMLDivElement | null>(null);
-  const currentTheme = THEMES[theme] || THEMES.cyan;
+  const currentTheme = THEMES[theme] || THEMES.amber;
 
   useEffect(() => {
     const container = containerRef.current;
@@ -37,7 +37,7 @@ export const HUDCameraFeed: React.FC<HUDCameraFeedProps> = ({
   return (
     <div
       id="hud-camera-feed"
-      className="relative w-64 sm:w-80 h-44 sm:h-52 rounded-2xl border bg-black/90 overflow-hidden shadow-2xl backdrop-blur-md animate-in zoom-in-95 duration-200"
+      className="relative w-56 max-w-[68vw] sm:w-80 h-40 sm:h-52 rounded-2xl border bg-black/90 overflow-hidden shadow-2xl backdrop-blur-md animate-in zoom-in-95 duration-200"
       style={{
         borderColor: `${currentTheme.primary}77`,
         boxShadow: `0 0 30px rgba(0,0,0,0.8), 0 0 20px ${currentTheme.primary}33`,

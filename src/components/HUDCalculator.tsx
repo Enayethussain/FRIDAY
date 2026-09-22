@@ -26,7 +26,7 @@ export const HUDCalculator: React.FC<HUDCalculatorProps> = ({
   initialExpression = '',
   onClose,
 }) => {
-  const currentTheme = THEMES[theme] || THEMES.cyan;
+  const currentTheme = THEMES[theme] || THEMES.amber;
 
   const [expression, setExpression] = useState(initialExpression);
   const [result, setResult] = useState('');
@@ -168,7 +168,7 @@ export const HUDCalculator: React.FC<HUDCalculatorProps> = ({
                 <h3 className="font-display font-bold text-slate-100 text-base">
                   STARK HOLOGRAPHIC CALCULATOR
                 </h3>
-                <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-slate-800 border border-slate-700 text-cyan-400">
+                <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-slate-800 border border-slate-700 text-amber-400">
                   VOICE ACTIVE
                 </span>
               </div>
@@ -197,7 +197,7 @@ export const HUDCalculator: React.FC<HUDCalculatorProps> = ({
 
         {/* Voice Prompt Shortcut */}
         <div className="px-5 py-2 bg-slate-900/60 border-b border-slate-800/80 flex items-center gap-2 text-[11px] text-slate-400">
-          <Sparkles className="w-3.5 h-3.5 text-cyan-400 shrink-0" />
+          <Sparkles className="w-3.5 h-3.5 text-amber-400 shrink-0" />
           <span>Voice: Say <strong className="text-slate-200">"FRIDAY, calculate (450 * 18) / 2.5"</strong> or <strong className="text-slate-200">"FRIDAY, open calculator"</strong></span>
         </div>
 
@@ -245,7 +245,7 @@ export const HUDCalculator: React.FC<HUDCalculatorProps> = ({
                     key={op.label}
                     type="button"
                     onClick={() => handleButtonClick(op.val)}
-                    className="py-1.5 rounded-lg bg-slate-900/80 border border-slate-800 hover:border-cyan-500/50 text-xs font-mono text-cyan-400 hover:bg-slate-800 active:scale-95 transition-all cursor-pointer"
+                    className="py-1.5 rounded-lg bg-slate-900/80 border border-slate-800 hover:border-amber-500/50 text-xs font-mono text-amber-400 hover:bg-slate-800 active:scale-95 transition-all cursor-pointer"
                   >
                     {op.label}
                   </button>
@@ -279,7 +279,7 @@ export const HUDCalculator: React.FC<HUDCalculatorProps> = ({
               <button
                 type="button"
                 onClick={() => handleButtonClick('÷')}
-                className="py-3 rounded-xl bg-slate-800 border border-slate-700 hover:border-cyan-500/60 text-cyan-400 font-bold text-base active:scale-95 cursor-pointer"
+                className="py-3 rounded-xl bg-slate-800 border border-slate-700 hover:border-amber-500/60 text-amber-400 font-bold text-base active:scale-95 cursor-pointer"
               >
                 ÷
               </button>
@@ -297,7 +297,7 @@ export const HUDCalculator: React.FC<HUDCalculatorProps> = ({
               <button
                 type="button"
                 onClick={() => handleButtonClick('×')}
-                className="py-3 rounded-xl bg-slate-800 border border-slate-700 hover:border-cyan-500/60 text-cyan-400 font-bold text-base active:scale-95 cursor-pointer"
+                className="py-3 rounded-xl bg-slate-800 border border-slate-700 hover:border-amber-500/60 text-amber-400 font-bold text-base active:scale-95 cursor-pointer"
               >
                 ×
               </button>
@@ -315,7 +315,7 @@ export const HUDCalculator: React.FC<HUDCalculatorProps> = ({
               <button
                 type="button"
                 onClick={() => handleButtonClick('-')}
-                className="py-3 rounded-xl bg-slate-800 border border-slate-700 hover:border-cyan-500/60 text-cyan-400 font-bold text-base active:scale-95 cursor-pointer"
+                className="py-3 rounded-xl bg-slate-800 border border-slate-700 hover:border-amber-500/60 text-amber-400 font-bold text-base active:scale-95 cursor-pointer"
               >
                 -
               </button>
@@ -333,7 +333,7 @@ export const HUDCalculator: React.FC<HUDCalculatorProps> = ({
               <button
                 type="button"
                 onClick={() => handleButtonClick('+')}
-                className="py-3 rounded-xl bg-slate-800 border border-slate-700 hover:border-cyan-500/60 text-cyan-400 font-bold text-base active:scale-95 cursor-pointer"
+                className="py-3 rounded-xl bg-slate-800 border border-slate-700 hover:border-amber-500/60 text-amber-400 font-bold text-base active:scale-95 cursor-pointer"
               >
                 +
               </button>
@@ -378,7 +378,7 @@ export const HUDCalculator: React.FC<HUDCalculatorProps> = ({
           <div className="flex flex-col bg-[#04060d] border border-slate-800 rounded-xl p-3 overflow-hidden">
             <div className="flex items-center justify-between pb-2 mb-2 border-b border-slate-800/80 text-xs font-bold text-slate-300">
               <div className="flex items-center gap-1.5">
-                <History className="w-3.5 h-3.5 text-cyan-400" />
+                <History className="w-3.5 h-3.5 text-amber-400" />
                 <span>Tape History</span>
               </div>
               <button
@@ -401,10 +401,10 @@ export const HUDCalculator: React.FC<HUDCalculatorProps> = ({
                   <div
                     key={item.id}
                     onClick={() => handleUseHistory(item)}
-                    className="p-2 rounded-lg bg-slate-900/60 border border-slate-800/80 hover:border-cyan-500/50 cursor-pointer transition-all text-right group"
+                    className="p-2 rounded-lg bg-slate-900/60 border border-slate-800/80 hover:border-amber-500/50 cursor-pointer transition-all text-right group"
                   >
                     <div className="text-[10px] text-slate-400 truncate">{item.expression}</div>
-                    <div className="text-xs font-bold text-cyan-400 group-hover:text-cyan-300">
+                    <div className="text-xs font-bold text-amber-400 group-hover:text-amber-300">
                       = {item.result}
                     </div>
                   </div>

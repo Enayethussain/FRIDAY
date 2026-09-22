@@ -1,20 +1,14 @@
 import React, { useEffect, useState } from 'react';
 
-/** Fixed HUD corner brackets — pure decoration, clicks pass through */
-export const HUDFrameCorners: React.FC<{ accent: string }> = ({ accent }) => {
-  const base = 'pointer-events-none absolute z-40 h-7 w-7 sm:h-9 sm:w-9';
-  const border = (pos: string) => ({
-    borderColor: `${accent}88`,
-    boxShadow: `0 0 12px ${accent}33`,
-  });
-  return (
-    <div className="pointer-events-none fixed inset-2 sm:inset-3 z-40" aria-hidden="true">
-      <div className={`${base} left-0 top-0 border-l-2 border-t-2`} style={border('tl')} />
-      <div className={`${base} right-0 top-0 border-r-2 border-t-2`} style={border('tr')} />
-      <div className={`${base} bottom-0 left-0 border-b-2 border-l-2`} style={border('bl')} />
-      <div className={`${base} bottom-0 right-0 border-b-2 border-r-2`} style={border('br')} />
-    </div>
-  );
+/**
+ * Global HUD corner brackets — REMOVED per UI cleanup.
+ * The top-left / top-right / bottom-left / bottom-right decorative lines are
+ * gone completely (this component now renders nothing, so no empty spacing
+ * is left behind). Kept as a no-op export so existing imports keep working.
+ * Functional viewfinder reticles (camera/screen feeds) are untouched.
+ */
+export const HUDFrameCorners: React.FC<{ accent: string }> = () => {
+  return null;
 };
 
 const BOOT_LINES = [

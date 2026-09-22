@@ -120,7 +120,7 @@ console.log("Stream telemetry:", audioStream.getTelemetry());`,
     category: 'audio',
     description: 'Anti-chatter acoustic filter buffering spoken candidate words before trigger.',
     code: `// Custom Wakeword Acoustic Buffer Filter
-function evaluateWakewordConfidence(candidateWord, targetPhrase = "hey friday") {
+function evaluateWakewordConfidence(candidateWord, targetPhrase = "hey jarvis") {
   const clean = candidateWord.toLowerCase().trim();
   const tokens = clean.split(/\\s+/);
   const targetTokens = targetPhrase.split(/\\s+/);
@@ -141,7 +141,7 @@ function evaluateWakewordConfidence(candidateWord, targetPhrase = "hey friday") 
   };
 }
 
-evaluateWakewordConfidence("hey friday calibrate the power grid");`,
+evaluateWakewordConfidence("hey jarvis calibrate the power grid");`,
   },
 ];
 
@@ -152,7 +152,7 @@ export const HUDCodeWorkbench: React.FC<HUDCodeWorkbenchProps> = ({
   initialCode,
   initialLanguage = 'javascript',
 }) => {
-  const currentTheme = THEMES[theme] || THEMES.cyan;
+  const currentTheme = THEMES[theme] || THEMES.amber;
   const [activeTab, setActiveTab] = useState<'editor' | 'circuit'>('editor');
   const [code, setCode] = useState<string>(
     initialCode || PRESET_SNIPPETS[0].code
@@ -370,12 +370,12 @@ export const HUDCodeWorkbench: React.FC<HUDCodeWorkbenchProps> = ({
                     onClick={() => handleSelectSnippet(snip)}
                     className={`p-2.5 rounded-xl border text-left transition-all cursor-pointer ${
                       isSelected
-                        ? 'bg-slate-900 border-cyan-500/60 shadow-[0_0_15px_rgba(6,182,212,0.15)]'
+                        ? 'bg-slate-900 border-amber-500/60 shadow-[0_0_15px_rgba(255,196,0,0.15)]'
                         : 'bg-slate-950/60 border-slate-800/80 hover:bg-slate-900/80 hover:border-slate-700'
                     }`}
                   >
                     <div className="flex items-center gap-2 mb-1">
-                      <FileCode2 className="w-3.5 h-3.5 text-cyan-400 shrink-0" />
+                      <FileCode2 className="w-3.5 h-3.5 text-amber-400 shrink-0" />
                       <span className="text-xs font-mono font-bold text-white truncate">
                         {snip.title}
                       </span>
@@ -388,8 +388,8 @@ export const HUDCodeWorkbench: React.FC<HUDCodeWorkbenchProps> = ({
               })}
 
               <div className="mt-auto pt-3 border-t border-slate-800/60">
-                <div className="p-2 rounded-lg bg-cyan-950/20 border border-cyan-500/20 text-[10px] font-mono text-cyan-300 flex items-start gap-1.5">
-                  <Sparkles className="w-3.5 h-3.5 text-cyan-400 shrink-0 mt-0.5" />
+                <div className="p-2 rounded-lg bg-amber-950/20 border border-amber-500/20 text-[10px] font-mono text-amber-300 flex items-start gap-1.5">
+                  <Sparkles className="w-3.5 h-3.5 text-amber-400 shrink-0 mt-0.5" />
                   <span>Ask FRIDAY in voice: "Run this code snippet" or "Review my function" for real-time mentor feedback!</span>
                 </div>
               </div>
@@ -451,7 +451,7 @@ export const HUDCodeWorkbench: React.FC<HUDCodeWorkbenchProps> = ({
                   onChange={(e) => setCode(e.target.value)}
                   placeholder="// Enter JavaScript or TypeScript code here..."
                   spellCheck={false}
-                  className="w-full h-full p-4 bg-transparent text-xs sm:text-sm font-mono text-slate-200 resize-none focus:outline-none leading-relaxed selection:bg-cyan-500/30 overflow-y-auto"
+                  className="w-full h-full p-4 bg-transparent text-xs sm:text-sm font-mono text-slate-200 resize-none focus:outline-none leading-relaxed selection:bg-amber-500/30 overflow-y-auto"
                   style={{
                     tabSize: 2,
                   }}
@@ -462,7 +462,7 @@ export const HUDCodeWorkbench: React.FC<HUDCodeWorkbenchProps> = ({
               <div className="h-44 border-t border-slate-800 bg-black/90 flex flex-col">
                 <div className="flex items-center justify-between px-3 py-1.5 border-b border-slate-800/60 bg-slate-900/50">
                   <div className="flex items-center gap-2 text-[10px] font-mono uppercase text-slate-400 font-bold">
-                    <Terminal className="w-3.5 h-3.5 text-cyan-400" />
+                    <Terminal className="w-3.5 h-3.5 text-amber-400" />
                     <span>Console Output & Return Buffer</span>
                   </div>
                   {consoleOutput.length > 0 && (
@@ -491,7 +491,7 @@ export const HUDCodeWorkbench: React.FC<HUDCodeWorkbenchProps> = ({
                             : line.startsWith('➜ Return')
                             ? 'text-amber-300'
                             : line.startsWith('⚡')
-                            ? 'text-cyan-400 font-semibold'
+                            ? 'text-amber-400 font-semibold'
                             : 'text-slate-300'
                         }`}
                       >
@@ -557,7 +557,7 @@ export const HUDCodeWorkbench: React.FC<HUDCodeWorkbenchProps> = ({
                     cy="150"
                     r="75"
                     fill="url(#schematicGlow)"
-                    stroke={circuit.overdrive ? '#fb7185' : '#67e8f9'}
+                    stroke={circuit.overdrive ? '#fb7185' : '#FFE600'}
                     strokeWidth="2"
                   />
 
@@ -609,7 +609,7 @@ export const HUDCodeWorkbench: React.FC<HUDCodeWorkbenchProps> = ({
               <div className="grid grid-cols-3 gap-3 w-full mt-4 pt-3 border-t border-slate-800/80 text-center">
                 <div className="p-2 rounded-lg bg-black/40 border border-slate-800">
                   <span className="text-[10px] font-mono text-slate-400 block">TOTAL POWER</span>
-                  <strong className="text-sm font-mono text-cyan-300">{totalPowerMW} MW</strong>
+                  <strong className="text-sm font-mono text-amber-300">{totalPowerMW} MW</strong>
                 </div>
                 <div className="p-2 rounded-lg bg-black/40 border border-slate-800">
                   <span className="text-[10px] font-mono text-slate-400 block">CORE TEMP</span>
@@ -630,7 +630,7 @@ export const HUDCodeWorkbench: React.FC<HUDCodeWorkbenchProps> = ({
             <div className="w-full md:w-80 flex flex-col gap-4">
               <div className="p-4 rounded-xl border border-slate-800 bg-slate-900/40 space-y-4">
                 <h4 className="text-xs font-mono font-bold uppercase text-white flex items-center gap-2">
-                  <Sliders className="w-4 h-4 text-cyan-400" />
+                  <Sliders className="w-4 h-4 text-amber-400" />
                   <span>Flux & Voltage Modulation</span>
                 </h4>
 
@@ -638,7 +638,7 @@ export const HUDCodeWorkbench: React.FC<HUDCodeWorkbenchProps> = ({
                 <div>
                   <div className="flex justify-between text-xs font-mono mb-1">
                     <span className="text-slate-400">Core Voltage</span>
-                    <span className="text-cyan-300 font-bold">{circuit.coreVoltage} V</span>
+                    <span className="text-amber-300 font-bold">{circuit.coreVoltage} V</span>
                   </div>
                   <input
                     type="range"
@@ -650,7 +650,7 @@ export const HUDCodeWorkbench: React.FC<HUDCodeWorkbenchProps> = ({
                       setCircuit((prev) => ({ ...prev, coreVoltage: Number(e.target.value) }));
                       HapticFeedback.tap();
                     }}
-                    className="w-full accent-cyan-400 cursor-pointer"
+                    className="w-full accent-amber-400 cursor-pointer"
                   />
                 </div>
 
@@ -658,7 +658,7 @@ export const HUDCodeWorkbench: React.FC<HUDCodeWorkbenchProps> = ({
                 <div>
                   <div className="flex justify-between text-xs font-mono mb-1">
                     <span className="text-slate-400">Resonance Frequency</span>
-                    <span className="text-cyan-300 font-bold">{circuit.frequency} Hz</span>
+                    <span className="text-amber-300 font-bold">{circuit.frequency} Hz</span>
                   </div>
                   <input
                     type="range"
@@ -670,7 +670,7 @@ export const HUDCodeWorkbench: React.FC<HUDCodeWorkbenchProps> = ({
                       setCircuit((prev) => ({ ...prev, frequency: Number(e.target.value) }));
                       HapticFeedback.tap();
                     }}
-                    className="w-full accent-cyan-400 cursor-pointer"
+                    className="w-full accent-amber-400 cursor-pointer"
                   />
                 </div>
 
@@ -678,7 +678,7 @@ export const HUDCodeWorkbench: React.FC<HUDCodeWorkbenchProps> = ({
                 <div>
                   <div className="flex justify-between text-xs font-mono mb-1">
                     <span className="text-slate-400">Magnetic Flux Density</span>
-                    <span className="text-cyan-300 font-bold">{circuit.fluxPercent}%</span>
+                    <span className="text-amber-300 font-bold">{circuit.fluxPercent}%</span>
                   </div>
                   <input
                     type="range"
@@ -690,7 +690,7 @@ export const HUDCodeWorkbench: React.FC<HUDCodeWorkbenchProps> = ({
                       setCircuit((prev) => ({ ...prev, fluxPercent: Number(e.target.value) }));
                       HapticFeedback.tap();
                     }}
-                    className="w-full accent-cyan-400 cursor-pointer"
+                    className="w-full accent-amber-400 cursor-pointer"
                   />
                 </div>
 
@@ -736,7 +736,7 @@ export const HUDCodeWorkbench: React.FC<HUDCodeWorkbenchProps> = ({
                       }}
                       className={`p-2 rounded-lg border text-xs font-mono uppercase font-bold text-center transition-all cursor-pointer ${
                         circuit.activePath === path
-                          ? 'bg-cyan-500/20 text-cyan-300 border-cyan-500/60 shadow-sm'
+                          ? 'bg-amber-500/20 text-amber-300 border-amber-500/60 shadow-sm'
                           : 'bg-black/30 border-slate-800 text-slate-400 hover:text-white'
                       }`}
                     >

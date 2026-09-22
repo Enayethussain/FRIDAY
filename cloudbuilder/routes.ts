@@ -1,5 +1,5 @@
-// FRIDAY Cloud App Builder — isolated module. Mounted in main backend via ONE additive hook.
-// Owns: jobs, sandboxed worker, artifacts, SSE status. Never touches existing FRIDAY logic.
+// JARVIS Cloud App Builder — isolated module. Mounted in main backend via ONE additive hook.
+// Owns: jobs, sandboxed worker, artifacts, SSE status. Never touches existing JARVIS logic.
 import { Router, Request, Response } from 'express';
 import fs from 'node:fs';
 import path from 'node:path';
@@ -23,7 +23,7 @@ const STEP_TIMEOUT = Number(process.env.AB_STEP_TIMEOUT_MS || 60000);
 const MAX_CONCURRENT = Number(process.env.AB_MAX_CONCURRENT || 2);
 
 function cleanEnv(): NodeJS.ProcessEnv {
-  // Sandbox: generated-code steps never see FRIDAY secrets
+  // Sandbox: generated-code steps never see JARVIS secrets
   const e = { ...process.env };
   delete e.GEMINI_API_KEY; delete e.JWT_SECRET; delete e.FIREBASE_PRIVATE_KEY;
   delete e.GOOGLE_API_KEY; delete e.APPBUILDER_PORT;

@@ -70,9 +70,9 @@ export class DeviceLinkManager {
 
   private defaultName(): string {
     const ua = navigator.userAgent || '';
-    if (/Android/i.test(ua)) return 'FRIDAY Phone';
-    if (/Mobile/i.test(ua)) return 'FRIDAY Mobile';
-    return 'FRIDAY PC';
+    if (/Android/i.test(ua)) return 'JARVIS Phone';
+    if (/Mobile/i.test(ua)) return 'JARVIS Mobile';
+    return 'JARVIS PC';
   }
 
   private deviceKind(): string {

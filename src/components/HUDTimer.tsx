@@ -17,7 +17,7 @@ export const HUDTimer: React.FC<HUDTimerProps> = ({
   const [remaining, setRemaining] = useState(timer.remainingSeconds);
   const [isRunning, setIsRunning] = useState(timer.isRunning);
   const [hasFinished, setHasFinished] = useState(false);
-  const currentTheme = THEMES[theme] || THEMES.cyan;
+  const currentTheme = THEMES[theme] || THEMES.amber;
 
   useEffect(() => {
     if (!isRunning || remaining <= 0) {

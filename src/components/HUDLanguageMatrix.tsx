@@ -53,7 +53,7 @@ export const HUDLanguageMatrix: React.FC<HUDLanguageMatrixProps> = ({
   onClose,
 }) => {
   const [search, setSearch] = useState('');
-  const currentTheme = THEMES[theme] || THEMES.cyan;
+  const currentTheme = THEMES[theme] || THEMES.amber;
 
   if (!isOpen) return null;
 
@@ -132,7 +132,7 @@ export const HUDLanguageMatrix: React.FC<HUDLanguageMatrixProps> = ({
               placeholder="Search world languages (e.g. Spanish, Bengali, Hindi, Japanese)..."
               value={search}
               onChange={(e) => setSearch(e.target.value)}
-              className="w-full pl-9 pr-4 py-2 rounded-xl bg-slate-900 border border-slate-700/80 text-xs font-mono text-slate-100 placeholder-slate-500 focus:outline-none focus:border-cyan-500"
+              className="w-full pl-9 pr-4 py-2 rounded-xl bg-slate-900 border border-slate-700/80 text-xs font-mono text-slate-100 placeholder-slate-500 focus:outline-none focus:border-amber-500"
             />
           </div>
         </div>
@@ -148,7 +148,7 @@ export const HUDLanguageMatrix: React.FC<HUDLanguageMatrixProps> = ({
                 onClick={() => onSelectLanguage(lang.code)}
                 className={`p-3 rounded-xl border text-left flex items-center justify-between transition-all cursor-pointer ${
                   isSelected
-                    ? 'bg-slate-800/90 border-cyan-500 shadow-md'
+                    ? 'bg-slate-800/90 border-amber-500 shadow-md'
                     : 'bg-[#0c1322] border-slate-800 hover:bg-slate-800/40 hover:border-slate-700'
                 }`}
                 style={{

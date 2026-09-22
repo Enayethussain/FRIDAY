@@ -4,5 +4,17 @@ dist/
 coverage/
 .DS_Store
 *.log
+*.err
 .env*
 !.env.example
+
+# Release signing secrets - NEVER commit
+*.keystore
+*.jks
+android/keystore.properties
+
+# Local runtime data - NEVER commit (user data, stores, local artifacts)
+data/friday-store.json
+data/logs/
+generated_apps/
+_checkpoints/

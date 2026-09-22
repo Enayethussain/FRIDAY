@@ -6,6 +6,8 @@ import {
   CountdownTimer,
   EmotionalMetadata,
   EmotionalTone,
+  HologramControlAction,
+  HologramState,
   LiveVoice,
   MediaViewportState,
   MemoryItem,
@@ -21,7 +23,11 @@ import {
   WitLevel,
   ProtocolId,
 } from './types';
-import { FridayPlasmaOrb } from './components/FridayPlasmaOrb';
+import { FridayOrb } from './components/FridayOrb/FridayOrb';
+import type { HologramHandle } from './components/HUDHologramViewer';
+// Lazy: three.js hologram stack loads only when a hologram is requested.
+const HUDHologramViewer = React.lazy(() => import('./components/HUDHologramViewer').then((m) => ({ default: m.HUDHologramViewer })));
+const HUDHologramLibrary = React.lazy(() => import('./components/HUDHologramLibrary').then((m) => ({ default: m.HUDHologramLibrary })));
 import { DynamicWaveform } from './components/DynamicWaveform';
 import { HUDHeader } from './components/HUDHeader';
 import { HUDActionCard } from './components/HUDActionCard';
@@ -41,6 +47,7 @@ import { HUDEmotionalProcessor } from './components/HUDEmotionalProcessor';
 import { HUDFridayLogin } from './components/HUDFridayLogin';
 import { HUDFridayMobileLogin } from './components/HUDFridayMobileLogin';
 import { Capacitor } from '@capacitor/core';
+import { App as CapApp } from '@capacitor/app';
 
 /** Mobile app (Android WebView / mobile browser) me futuristic login, PC par cyber-lock gate */
 function isMobileApp(): boolean {
@@ -68,14 +75,43 @@ import { HUDChatPanel } from './components/HUDChatPanel';
 import { HUDMicMeter } from './components/HUDMicMeter';
 import { HUDFaceEnrollment } from './components/HUDFaceEnrollment';
 import { FuturisticBackdrop } from './components/FuturisticBackdrop';
-import { HUDFrameCorners, BootOverlay } from './components/HUDFrame';
+import { BootOverlay } from './components/HUDFrame';
 import { HUDDeviceLink } from './components/HUDDeviceLink';
+import { HUDSecureDevices } from './components/HUDSecureDevices';
+import { HUDFileTransfer } from './components/HUDFileTransfer';
+import { PcBridgeService } from './services/PcBridgeService';
+import { globalGestureEngine } from './services/GestureControlEngine';
 // [AppBuilder hook] isolated add-on (new file, existing HUD untouched)
 import { HUDAppBuilder } from './components/HUDAppBuilder';
+import { HUDPhoneAssistant } from './components/HUDPhoneAssistant';
+import { HUDPermissionCenter } from './components/HUDPermissionCenter';
+import { HUDScreenAssist } from './components/HUDScreenAssist';
+import { ProactiveAssistantEngine } from './services/ProactiveAssistantEngine';
+import { SphereOverlayService } from './services/SphereOverlayService';
 // [MoreMenu] mobile bottom-sheet (new file, existing HUD untouched)
 import { HUDMoreMenu } from './components/HUDMoreMenu';
+// Native Android gesture camera (Capacitor plugin; additive, web gestures untouched)
+import { HUDGestureSettings } from './components/HUDGestureSettings';
+import { globalNativeGestureBridge, isNativeGestureSupported } from './services/NativeGestureBridge';
+// FRIDAY Share — nearby sharing on the paired-device relay (additive panel)
+import { HUDShare } from './components/HUDShare';
 import { globalDeviceLink } from './services/DeviceLinkManager';
 import { globalAuthManager } from './services/AuthManager';
+// App Open ads: verified entitlement + critical-operation guard (native owns SDK).
+import { initAdsEntitlement, setCriticalBusy } from './services/AdsService';
+// Central plan/entitlement system (server-authoritative, cached safely).
+import { hasEntitlement, refreshEntitlements } from './services/EntitlementService';
+import { UpgradePrompt } from './components/UpgradePrompt';
+import { HUDSubscription } from './components/HUDSubscription';
+// Dual-voice system: FRIDAY (default) / JARVIS with real TTS switching.
+import {
+  getActiveVoice,
+  getLiveVoiceFor,
+  registerLiveVoiceApplier,
+  requestVoiceSwitch,
+  subscribeActiveVoice,
+  type AssistantVoiceId,
+} from './services/DualVoiceManager';
 import { globalMemoryManager } from './services/MemoryManager';
 import { globalCurriculumManager } from './services/CurriculumManager';
 import { globalWakewordManager } from './services/WakewordManager';
@@ -115,10 +151,43 @@ import {
 
 export default function App() {
   const [state, setState] = useState<AssistantState>('disconnected');
-  const [theme, setTheme] = useState<ThemeAccent>('cyan');
+  const [theme, setTheme] = useState<ThemeAccent>('amber');
   const [actionCards, setActionCards] = useState<ActionCard[]>([]);
   const [timers, setTimers] = useState<CountdownTimer[]>([]);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+
+  // Orb visual signals — all from REAL events (wake-word, tool bursts, errors)
+  const [orbToolActive, setOrbToolActive] = useState(false);
+  const [orbToolStartAt, setOrbToolStartAt] = useState<number | null>(null);
+  const [orbWakeAt, setOrbWakeAt] = useState<number | null>(null);
+  const [orbLastResult, setOrbLastResult] = useState<{ ok: boolean; at: number } | null>(null);
+  const [orbErrorAt, setOrbErrorAt] = useState<number | null>(null);
+
+  // Universal 3D Hologram Generator state (viewer lazy-loads three.js)
+  const [hologram, setHologram] = useState<HologramState | null>(null);
+  const [hologramCompare, setHologramCompare] = useState<HologramState | null>(null);
+  const [libOpen, setLibOpen] = useState(false);
+  const hologramRef = useRef<HologramHandle>(null);
+  const hologramOpenRef = useRef(false);
+
+  // Preload the offline hologram catalog once (deterministic search + browser).
+  useEffect(() => {
+    void import('./hologram/registry').then(({ loadCatalog }) => loadCatalog()).catch(() => {});
+  }, []);
+
+  const openLibraryModel = (entry: { id: string; label: string; category: string; isApproximation: boolean; url?: string; format?: 'glb' | 'gltf' | 'obj'; description?: string; polygon_count?: number; animation?: boolean }) => {
+    hologramOpenRef.current = true;
+    setLibOpen(false);
+    setHologramCompare(null);
+    setHologram({
+      isOpen: true, object: entry.label, entryId: entry.id, label: entry.label,
+      category: entry.category, kind: 'local', isApproximation: entry.isApproximation,
+      note: entry.description || 'Local library model.', status: 'loading',
+      modelUrl: entry.url, format: entry.format, progress: 0,
+    });
+  };
+  /** Auto-start greeting spoken once per launch (Task Scheduler path only). */
+  const greetedRef = useRef(false);
 
   // Media, Vision & Productivity States
   const [mediaViewport, setMediaViewport] = useState<MediaViewportState>({
@@ -200,7 +269,9 @@ export default function App() {
   const [isNotesOpen, setIsNotesOpen] = useState(false);
   const [isTasksOpen, setIsTasksOpen] = useState(false);
   const [isVoiceSettingsOpen, setIsVoiceSettingsOpen] = useState(false);
+  // FRIDAY is always the default voice (Aoede). DualVoiceManager persists it.
   const [currentVoice, setCurrentVoice] = useState<LiveVoice>('Aoede');
+  const [activeVoice, setActiveVoice] = useState<AssistantVoiceId>(() => getActiveVoice());
   const [currentWit, setCurrentWit] = useState<WitLevel>('witty');
 
   // Emotional Metadata Processor state
@@ -211,7 +282,7 @@ export default function App() {
     glowIntensity: 1.0,
     pulseFrequency: 1.0,
     pulseDuration: 1.0,
-    ambientColor: '#06b6d4',
+    ambientColor: '#FFC400',
     label: 'EQUILIBRIUM',
     summary: 'Cybernetic baseline equilibrium',
     updatedAt: Date.now(),
@@ -264,10 +335,25 @@ export default function App() {
   const [isChatOpen, setIsChatOpen] = useState(false);
   const [isFaceEnrollmentOpen, setIsFaceEnrollmentOpen] = useState(false);
   const [isDeviceLinkOpen, setIsDeviceLinkOpen] = useState(false);
+  const [isSecureDevicesOpen, setIsSecureDevicesOpen] = useState(false);
+  const [isFileTransferOpen, setIsFileTransferOpen] = useState(false);
+  const [ftTargetId, setFtTargetId] = useState<string | undefined>(undefined);
   // [AppBuilder hook] isolated add-on modal state (new capability, no existing logic touched)
   const [isAppBuilderOpen, setIsAppBuilderOpen] = useState(false);
+  const [isPhoneAssistantOpen, setIsPhoneAssistantOpen] = useState(false);
+  const [isPermissionCenterOpen, setIsPermissionCenterOpen] = useState(false);
+  const [isScreenAssistOpen, setIsScreenAssistOpen] = useState(false);
+  const [screenAssistActive, setScreenAssistActive] = useState(false);
   // [MoreMenu] mobile: saare floating buttons ek "⋯ More" sheet me (PC UI untouched)
   const [isMoreOpen, setIsMoreOpen] = useState(false);
+  // Native Android gesture camera settings + HUD interaction lock (fist gesture)
+  const [isGestureSettingsOpen, setIsGestureSettingsOpen] = useState(false);
+  const [isHudLocked, setIsHudLocked] = useState(false);
+  // FRIDAY Share panel (voice "open share" fires friday:open-share)
+  const [isShareOpen, setIsShareOpen] = useState(false);
+  // Subscription + upgrade prompt (central entitlement gates below).
+  const [isSubscriptionOpen, setIsSubscriptionOpen] = useState(false);
+  const [upgradeAsk, setUpgradeAsk] = useState<{ featureLabel: string; requiredPlan: 'PRO' | 'PLUS' } | null>(null);
   const isMobileUI = isMobileApp();
 
   const stateManagerRef = useRef<StateManager | null>(null);
@@ -283,6 +369,19 @@ export default function App() {
   useEffect(() => {
     const sm = stateManagerRef.current;
     if (!sm) return;
+
+    // Dual-voice wiring: voice-switch commands apply the REAL Live voice here.
+    // FRIDAY (default) -> Aoede, JARVIS -> Fenrir. A persisted JARVIS
+    // preference is honored; otherwise FRIDAY stays active.
+    const initialLive = getLiveVoiceFor(getActiveVoice());
+    setCurrentVoice(initialLive);
+    setActiveVoice(getActiveVoice());
+    if (sm.getVoice() !== initialLive) sm.setVoice(initialLive);
+    registerLiveVoiceApplier((v) => {
+      setCurrentVoice(v);
+      sm.setVoice(v);
+    });
+    const unsubVoice = subscribeActiveVoice((v) => setActiveVoice(v));
 
     // Load initial emotional state
     setEmotionalMetadata(sm.getEmotionalMetadata());
@@ -309,6 +408,7 @@ export default function App() {
 
     globalWakewordManager.onWakewordDetected = (phrase) => {
       HapticFeedback.wakeword();
+      setOrbWakeAt(performance.now());
       setWakewordBanner(`⚡ WAKEWORD RECOGNIZED: "${(phrase || '').toUpperCase()}" // INITIALIZING NEURAL CORE`);
       setTimeout(() => setWakewordBanner(null), 4000);
 
@@ -325,6 +425,22 @@ export default function App() {
       globalWakewordManager.start();
     }
 
+    // Initialize Proactive Assistant & Screen Assist (Android only).
+    // Screen Assist is strictly opt-in: init() only subscribes; polling starts
+    // after the user enables it in Screen Assist settings (or restores a saved ON).
+    import('@capacitor/core').then(({ Capacitor }) => {
+      if (Capacitor.getPlatform() === 'android') {
+        ProactiveAssistantEngine.init().then(() => {
+          setScreenAssistActive(ProactiveAssistantEngine.isAssistOn());
+        }).catch(() => {});
+        SphereOverlayService.hasPermission().then((hasPerm) => {
+          if (hasPerm) {
+            SphereOverlayService.start('idle').catch(() => {});
+          }
+        }).catch(() => {});
+      }
+    }).catch(() => {});
+
     sm.setListeners({
       onStateChange: (newState) => {
         setState(newState);
@@ -332,10 +448,42 @@ export default function App() {
         if (newState !== 'disconnected') {
           setErrorMessage(null);
         }
+        if (newState === 'connecting') setOrbWakeAt(performance.now());
+        // Auto-start greeting: spoken once, only for Task Scheduler launches
+        // that actually reach a live voice session — never before ready.
+        if (newState === 'listening' && !greetedRef.current) {
+          greetedRef.current = true;
+          void (async () => {
+            try {
+              const info = await PcBridgeService.shellInfo();
+              if (!info || !info.autostart) return;
+              const h = new Date().getHours();
+              const part = h < 12 ? 'Good morning' : h < 17 ? 'Good afternoon' : 'Good evening';
+              const { TTSService } = await import('./services/TTSService');
+              await TTSService.speakHinglish(`${part}, Sir. FRIDAY is online.`);
+            } catch { /* greeting is optional — silence is better than a crash */ }
+          })();
+        }
+        // Update sphere overlay state
+        const stateMap: Record<string, 'idle' | 'listening' | 'processing' | 'speaking' | 'error'> = {
+          disconnected: 'idle', connecting: 'processing', listening: 'listening', speaking: 'speaking',
+        };
+        SphereOverlayService.setState(stateMap[newState] || 'idle').catch(() => {});
       },
       onError: (msg) => {
         HapticFeedback.warning();
         setErrorMessage(msg);
+        setOrbErrorAt(performance.now());
+      },
+      onOrbActivity: (e) => {
+        if (e.type === 'tool-start') {
+          setOrbToolActive(true);
+          setOrbToolStartAt(performance.now());
+        } else {
+          setOrbToolActive(false);
+          setOrbLastResult({ ok: e.ok, at: performance.now() });
+          if (!e.ok) setOrbErrorAt(performance.now());
+        }
       },
       onActionCard: (card) => {
         setActionCards((prev) => [card, ...prev.slice(0, 3)]);
@@ -348,6 +496,48 @@ export default function App() {
       },
       onMediaViewport: (viewport) => {
         setMediaViewport(viewport);
+      },
+      onHologram: (h) => {
+        // Hologram viewer is PRO — including voice-driven opens.
+        if (h.isOpen && !hasEntitlement('HOLOGRAM')) {
+          setUpgradeAsk({ featureLabel: 'Hologram / 3D viewer', requiredPlan: 'PRO' });
+          return;
+        }
+        hologramOpenRef.current = h.isOpen;
+        setHologramCompare(null);
+        setHologram(h);
+      },
+      onHologramLibrary: () => {
+        if (!hasEntitlement('HOLOGRAM_LIBRARY')) {
+          setUpgradeAsk({ featureLabel: 'Hologram library', requiredPlan: 'PRO' });
+          return;
+        }
+        setLibOpen(true);
+      },
+      onHologramCompare: (a, b) => {
+        hologramOpenRef.current = true;
+        setHologram(a);
+        setHologramCompare(b);
+        try {
+          const r = [a.entryId, ...JSON.parse(localStorage.getItem('jarvis_holo_recent') || '[]').filter((x: string) => x !== a.entryId)].slice(0, 10);
+          localStorage.setItem('jarvis_holo_recent', JSON.stringify(r));
+        } catch { /* noop */ }
+      },
+      onHologramControl: (action: HologramControlAction, degrees?: number) => {
+        if (!hologramOpenRef.current || !hologramRef.current) {
+          setActionCards((prev) => [
+            {
+              id: `holo-none-${Date.now()}`,
+              type: 'info',
+              title: 'No hologram open',
+              description: 'Sir, pehle koi hologram banao — phir rotate/zoom karo.',
+              timestamp: Date.now(),
+            } as any,
+            ...prev.slice(0, 3),
+          ]);
+          return;
+        }
+        try { hologramRef.current.control(action, degrees); } catch { /* viewer-only */ }
       },
       onWeatherUpdated: (w) => {
         setWeather(w);
@@ -394,7 +584,7 @@ export default function App() {
           onSetTimer: (sec, lbl) => {
             setTimers((prev) => [
               ...prev,
-              { id: `timer-${Date.now()}`, seconds: sec, initialSeconds: sec, label: lbl },
+              { id: `timer-${Date.now()}`, label: lbl, totalSeconds: sec, remainingSeconds: sec, isRunning: true },
             ]);
           },
           onActionCard: (card) => {
@@ -439,8 +629,8 @@ export default function App() {
             }
           }
         } else {
-          setTheme('cyan');
-          sm.setTheme('cyan');
+          setTheme('amber');
+          sm.setTheme('amber');
           setWakewordBanner('SURVEILLANCE MODE DEACTIVATED');
         }
         setTimeout(() => setWakewordBanner(null), 4000);
@@ -452,6 +642,8 @@ export default function App() {
       unsubMem();
       unsubCurriculum();
       unsubWake();
+      unsubVoice();
+      registerLiveVoiceApplier(null);
       globalWakewordManager.stopListening();
       sm.disconnect();
     };
@@ -466,6 +658,11 @@ export default function App() {
   // Device Link inbox polling — paired device se aaye messages HUD pe dikhao
   // + Cloud Sync: paired room ka shared state (notes/tasks/curriculum) auto sync
   useEffect(() => {
+    // App Open ads: fetch verified plan once (FREE -> ads, PRO/PLUS -> none).
+    // Native stays quiet until this resolves; unknown backend = FREE behavior.
+    void initAdsEntitlement();
+    // Central entitlements (confirmed/cached/unavailable) for feature gates.
+    void refreshEntitlements();
     globalDeviceLink.startPolling(5000);
     import('./services/CloudSyncManager').then(({ globalCloudSync }) => {
       globalDeviceLink.register().catch(() => {}).finally(() => globalCloudSync.start(10000));
@@ -493,6 +690,67 @@ export default function App() {
     };
   }, []);
 
+  // App Open ads: suppress while FRIDAY runs a critical operation so an ad
+  // never interrupts voice, calls, transfers, vault/security, camera, gestures,
+  // permissions, or phone control. Each flag clears independently.
+  // Voice uses live mic activity (not merely "connected") so an idle session
+  // does not suppress ads forever; re-checked on a lightweight interval.
+  useEffect(() => {
+    const sm = stateManagerRef.current;
+    const pushVoice = () => {
+      try {
+        setCriticalBusy('voice', sm ? sm.isVoiceActiveNow() : state !== 'disconnected');
+      } catch {
+        setCriticalBusy('voice', state !== 'disconnected');
+      }
+    };
+    pushVoice();
+    const t = setInterval(pushVoice, 2000);
+    return () => clearInterval(t);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [state]);
+  useEffect(() => {
+    setCriticalBusy('share', isShareOpen || isFileTransferOpen);
+    setCriticalBusy('vault', isPrivateVaultOpen || isAuthModalOpen);
+    setCriticalBusy('camera', isCameraActive || isScreenWatching);
+    setCriticalBusy('gesture', isGestureSettingsOpen);
+    setCriticalBusy('permissions', isPermissionCenterOpen);
+    setCriticalBusy('phone', isPhoneAssistantOpen);
+    setCriticalBusy('enrollment', isVoiceEnrollmentOpen || isFaceEnrollmentOpen);
+  }, [state, isShareOpen, isFileTransferOpen, isPrivateVaultOpen, isAuthModalOpen, isCameraActive, isScreenWatching, isGestureSettingsOpen, isPermissionCenterOpen, isPhoneAssistantOpen, isVoiceEnrollmentOpen, isFaceEnrollmentOpen]);
+
+  // Android back button: close topmost layer first (MORE, panels, prompts),
+  // otherwise exit the app (preserves default system behavior).
+  const backCloseRef = useRef<() => boolean>(() => false);
+  backCloseRef.current = () => {
+    if (upgradeAsk) { setUpgradeAsk(null); return true; }
+    if (isSubscriptionOpen) { setIsSubscriptionOpen(false); return true; }
+    if (isMoreOpen) { setIsMoreOpen(false); return true; }
+    if (isChatOpen) { setIsChatOpen(false); return true; }
+    if (isShareOpen) { setIsShareOpen(false); return true; }
+    if (isFileTransferOpen) { setIsFileTransferOpen(false); return true; }
+    if (isAppBuilderOpen) { setIsAppBuilderOpen(false); return true; }
+    if (isPhoneAssistantOpen) { setIsPhoneAssistantOpen(false); return true; }
+    if (isGestureSettingsOpen) { setIsGestureSettingsOpen(false); return true; }
+    if (isPrivateVaultOpen) { setIsPrivateVaultOpen(false); return true; }
+    if (isVoiceSettingsOpen) { setIsVoiceSettingsOpen(false); return true; }
+    return false;
+  };
+  useEffect(() => {
+    let handle: { remove: () => void } | null = null;
+    try {
+      if (!Capacitor.isNativePlatform()) return;
+      CapApp.addListener('backButton', () => {
+        let consumed = false;
+        try { consumed = backCloseRef.current(); } catch { consumed = false; }
+        if (!consumed) {
+          try { void CapApp.exitApp(); } catch { /* system default */ }
+        }
+      }).then((h) => { handle = h; }).catch(() => {});
+    } catch { /* web: no hardware back */ }
+    return () => { try { handle?.remove(); } catch {} };
+  }, []);
+
   const handleToggleCore = async () => {
     HapticFeedback.tap();
     setErrorMessage(null);
@@ -505,9 +763,36 @@ export default function App() {
     }
   };
 
+  // Desktop shell events (tray): voice on/off, gesture pause/resume, open panels.
+  // No-ops in browser — the bridge reports NOT_SUPPORTED there.
+  useEffect(() => {
+    const offs = [
+      PcBridgeService.onShellEvent('friday-voice', (on: unknown) => {
+        const sm = stateManagerRef.current;
+        if (!sm) return;
+        const connected = sm.getState() !== 'disconnected';
+        if (!!on && !connected) void handleToggleCore();
+        if (!on && connected) void handleToggleCore();
+      }),
+      PcBridgeService.onShellEvent('friday-gestures', (on: unknown) => {
+        globalGestureEngine.setPaused(!on);
+      }),
+      PcBridgeService.onShellEvent('friday-open-secure', () => setIsSecureDevicesOpen(true)),
+      PcBridgeService.onShellEvent('friday-open-permissions', () => setIsPermissionCenterOpen(true)),
+    ];
+    return () => { offs.forEach((off) => { try { off(); } catch { /* noop */ } }); };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   const handleToggleScreenWatch = async () => {
     const sm = stateManagerRef.current;
     if (!sm) return;
+    // Screen awareness is PRO (permission-gated where Android allows).
+    // Stopping an active watch is always allowed; starting needs entitlement.
+    if (!sm.isScreenWatching() && !hasEntitlement('SCREEN_AWARENESS')) {
+      setUpgradeAsk({ featureLabel: 'Screen awareness', requiredPlan: 'PRO' });
+      return;
+    }
     try {
       if (sm.isScreenWatching()) {
         sm.stopScreenWatch();
@@ -530,7 +815,7 @@ export default function App() {
             id: `screen-${Date.now()}`,
             type: 'info',
             title: 'Screen Watching Active // Teacher Mode',
-            description: `FRIDAY is now watching your screen (${sm.getScreenResolution().width}x${sm.getScreenResolution().height}). Ask her to guide or review your code!`,
+            description: `FRIDAY is now watching your screen (${sm.getScreenResolution().width}x${sm.getScreenResolution().height}). Ask him to guide or review your code!`,
             timestamp: Date.now(),
           },
           ...prev.slice(0, 2),
@@ -583,7 +868,28 @@ export default function App() {
     }
   };
 
+  // Central entitlement gate: open the feature only when entitled,
+  // otherwise show the upgrade prompt (never falsely execute).
+  const openGated = (feature: string, requiredPlan: 'PRO' | 'PLUS', featureLabel: string, open: () => void) => {
+    if (hasEntitlement(feature)) open();
+    else setUpgradeAsk({ featureLabel, requiredPlan });
+  };
+
   const handleSelectVoice = (voice: LiveVoice) => {
+    // Keep ACTIVE_VOICE consistent: Aoede <-> FRIDAY, Fenrir <-> JARVIS.
+    // JARVIS voice is a PRO entitlement: FREE users get the upgrade prompt,
+    // never a silent fake switch. Other Live voices work directly (preserved).
+    if (voice === 'Aoede' || voice === 'Fenrir') {
+      if (voice === 'Fenrir' && !hasEntitlement('JARVIS_VOICE')) {
+        setUpgradeAsk({ featureLabel: 'JARVIS voice mode', requiredPlan: 'PRO' });
+        return;
+      }
+      void requestVoiceSwitch(voice === 'Fenrir' ? 'JARVIS' : 'FRIDAY').then((r) => {
+        setCurrentVoice(r.liveVoice);
+        setActiveVoice(r.activeVoice);
+      });
+      return;
+    }
     setCurrentVoice(voice);
     stateManagerRef.current?.setVoice(voice);
   };
@@ -774,7 +1080,72 @@ export default function App() {
     setWakewordConfig(globalWakewordManager.getConfig());
   };
 
-  const currentTheme = THEMES[theme] || THEMES.cyan;
+  // FRIDAY Share voice hook: "open share" opens the real panel.
+  useEffect(() => {
+    const open = () => setIsShareOpen(true);
+    window.addEventListener('friday:open-share', open);
+    return () => window.removeEventListener('friday:open-share', open);
+  }, []);
+
+  // Native Android gesture camera -> REAL HUD actions (honest results only).
+  // Volume is executed + verified natively; everything here runs in the HUD
+  // and reports success only when it really happened.
+  useEffect(() => {
+    if (!isNativeGestureSupported()) return;
+    globalNativeGestureBridge.setHandlers({
+      onWakeHud: () => {
+        setWakewordBanner('✋ OPEN PALM — FRIDAY awake, sir.');
+        setTimeout(() => setWakewordBanner(null), 3000);
+        try {
+          SoundEffects.playWakewordChime();
+        } catch { /* audio-only */ }
+        return { ok: true, message: 'HUD awake.' };
+      },
+      onOpenPanel: () => {
+        setIsMoreOpen(true);
+        return { ok: true, message: 'Control panel khol diya.' };
+      },
+      onSwipe: (dir) => {
+        if (mediaViewport.isOpen) {
+          setMediaViewport((prev) => ({ ...prev, isOpen: false }));
+          return { ok: true, message: dir === 'next' ? 'Viewer band kar diya.' : 'Viewer band kar diya.' };
+        }
+        return { ok: false, message: 'Yahan swipe karne layak kuch nahi hai.' };
+      },
+      onZoom: (dir) => {
+        if (hologramOpenRef.current && hologramRef.current) {
+          try {
+            hologramRef.current.control(dir === 'in' ? 'zoom_in' : 'zoom_out');
+            return { ok: true, message: dir === 'in' ? 'Zoom in ho gaya.' : 'Zoom out ho gaya.' };
+          } catch {
+            return { ok: false, message: "Zoom isn't available here, sir." };
+          }
+        }
+        return { ok: false, message: "Zoom isn't available here, sir." };
+      },
+      onLockHud: () => {
+        setIsHudLocked(true);
+        return { ok: true, message: 'HUD interaction lock ho gaya.' };
+      },
+    });
+    const offEvent = globalNativeGestureBridge.onEventExternal((e) => {
+      // Orb/HUD reaction to REAL detections only (events come from the device).
+      const label = e.gesture.replace(/_/g, ' ').toUpperCase();
+      const outcome = e.needsHudAction
+        ? `${label} → ${e.action.replace(/_/g, ' ').toUpperCase()}…`
+        : e.success
+          ? `${label} → done, sir.`
+          : `${label} → ${e.message}`;
+      setWakewordBanner(`✋ ${outcome}`);
+      setTimeout(() => setWakewordBanner(null), 2800);
+    });
+    void globalNativeGestureBridge.attach();
+    return () => {
+      offEvent();
+    };
+  }, [mediaViewport.isOpen]);
+
+  const currentTheme = THEMES[theme] || THEMES.amber;
   const activeAnalyser = stateManagerRef.current ? stateManagerRef.current.getActiveAnalyser() : null;
 
   return (
@@ -798,17 +1169,16 @@ export default function App() {
           handleUploadFiles(e.dataTransfer.files);
         }
       }}
-      className="relative w-full h-dvh flex flex-col justify-between overflow-hidden bg-[#05070f] text-slate-100 select-none font-sans"
+      className="relative w-full h-dvh flex flex-col justify-between overflow-hidden bg-[#030405] text-slate-100 select-none font-sans"
     >
-      {/* Futuristic animated backdrop + HUD frame + boot sequence */}
+      {/* Futuristic animated backdrop + boot sequence (decorative corner frame removed) */}
       <FuturisticBackdrop state={state} accent={currentTheme.primary} />
-      <HUDFrameCorners accent={currentTheme.primary} />
       <BootOverlay accent={currentTheme.primary} accentLight={currentTheme.primaryLight} />
       {/* Global Window Drag-and-Drop Holographic Overlay */}
       {isDraggingWindowFile && (
         <div
           id="window-drag-overlay"
-          className="absolute inset-0 z-50 flex flex-col items-center justify-center bg-[#05070f]/90 backdrop-blur-xl border-4 border-dashed animate-in fade-in"
+          className="absolute inset-0 z-50 flex flex-col items-center justify-center bg-[#030405]/90 backdrop-blur-xl border-4 border-dashed animate-in fade-in"
           style={{ borderColor: currentTheme.primary }}
         >
           <div
@@ -856,6 +1226,7 @@ export default function App() {
         state={state}
         theme={theme}
         isCameraActive={isCameraActive}
+        activeVoice={activeVoice}
         isScreenWatching={isScreenWatching}
         curriculum={curriculum}
         notesCount={notes.length}
@@ -903,8 +1274,14 @@ export default function App() {
         isPrivateVaultUnlocked={isPrivateVaultUnlocked}
       />
 
-      {/* Main Interactive Stage: reactor zone fixed, neeche ka content alag scroll */}
-      <main className="relative flex-1 flex flex-col items-center px-4 py-1.5 z-10 max-w-4xl mx-auto w-full min-h-0 overflow-hidden">
+      {/* Main Interactive Stage: reactor zone adaptive, neeche ka content alag scroll */}
+      <main
+        className="relative flex-1 flex flex-col items-center px-4 py-1.5 z-10 max-w-4xl mx-auto w-full min-h-0 overflow-hidden"
+        style={{
+          paddingLeft: 'max(1rem, env(safe-area-inset-left, 0px))',
+          paddingRight: 'max(1rem, env(safe-area-inset-right, 0px))',
+        }}
+      >
         {/* Error Alert Banner */}
         {errorMessage && (
           <div
@@ -954,17 +1331,23 @@ export default function App() {
           </div>
         )}
 
-        {/* Central Core — FRIDAY Plasma Orb & Floating Camera Viewfinder Container (FIXED zone — kabhi hilta nahi) */}
-        <div className="relative flex w-full flex-none items-center justify-center my-1 h-[300px] sm:h-[360px]">
-          <FridayPlasmaOrb
+        {/* Central Core — FRIDAY Plasma Orb & Floating Camera Viewfinder (adaptive zone) */}
+        <div className="friday-orb-zone relative flex w-full flex-none items-center justify-center my-1">
+          <FridayOrb
             state={state}
             theme={theme}
             onToggle={handleToggleCore}
+            analyser={activeAnalyser}
+            toolActive={orbToolActive}
+            toolStartAt={orbToolStartAt}
+            wakeAt={orbWakeAt}
+            lastResult={orbLastResult}
+            errorAt={orbErrorAt}
           />
 
-          {/* Floating Camera Viewfinder if active */}
+          {/* Floating Camera Viewfinder if active (kept inside viewport on small phones) */}
           {isCameraActive && (
-            <div className="absolute top-0 -right-4 sm:-right-48 z-30">
+            <div className="absolute top-0 right-0 z-30 max-w-[70vw] sm:max-w-none">
               <HUDCameraFeed
                 videoElement={cameraVideoEl}
                 theme={theme}
@@ -974,6 +1357,49 @@ export default function App() {
             </div>
           )}
         </div>
+
+        {/* Hologram library — opens from MORE > Create > Hologram or voice; no main-screen button. */}
+        {libOpen && (
+          <div className="w-full max-w-xl flex-none px-2">
+            <React.Suspense
+              fallback={
+                <div className="w-full rounded-2xl border border-amber-500/30 bg-black/60 p-4 text-center font-mono text-xs tracking-widest text-amber-300">
+                  LOADING LIBRARY…
+                </div>
+              }
+            >
+              <HUDHologramLibrary accent={currentTheme.primary} onClose={() => setLibOpen(false)} onOpen={openLibraryModel} />
+            </React.Suspense>
+          </div>
+        )}
+        {/* Hologram viewer — renders only when a hologram is actually open (via voice or MORE). */}
+        {hologram && hologram.isOpen && (
+          <div className="w-full max-w-xl flex-none px-2">
+            <React.Suspense
+              fallback={
+                <div className="w-full rounded-2xl border border-amber-500/30 bg-black/60 p-4 text-center font-mono text-xs tracking-widest text-amber-300">
+                  LOADING HOLOGRAM ENGINE…
+                </div>
+              }
+            >
+              <HUDHologramViewer
+                ref={hologramRef}
+                request={hologram}
+                compare={hologramCompare}
+                theme={theme}
+                onClose={() => {
+                  hologramOpenRef.current = false;
+                  setHologram(null);
+                  setHologramCompare(null);
+                }}
+                onStatus={(status, extra) => {
+                  setHologram((prev) => (prev ? { ...prev, status, ...(extra || {}) } : prev));
+                }}
+                onUpgradeRequired={() => setUpgradeAsk({ featureLabel: '3D model upload', requiredPlan: 'PLUS' })}
+              />
+            </React.Suspense>
+          </div>
+        )}
 
         {/* Neeche ka scrollable content (waveform, meter, banners, cards) */}
         <div className="w-full flex-1 min-h-0 overflow-y-auto flex flex-col items-center">
@@ -1017,7 +1443,7 @@ export default function App() {
               </p>
             </div>
           </div>
-          <div className="flex items-center gap-1.5 text-[11px] text-cyan-400 shrink-0 font-mono ml-2 group-hover:text-cyan-300">
+          <div className="flex items-center gap-1.5 text-[11px] text-amber-400 shrink-0 font-mono ml-2 group-hover:text-amber-300">
             <span className="hidden sm:inline">Tomorrow: {curriculum.nextSessionPlan ? 'Scheduled' : 'Plan Next'}</span>
             <ChevronRight className="w-3.5 h-3.5 group-hover:translate-x-0.5 transition-transform" />
           </div>
@@ -1151,7 +1577,7 @@ export default function App() {
         onClose={() => setIsMemoriesOpen(false)}
         onAddMemory={handleAddMemory}
         onDeleteMemory={handleDeleteMemory}
-        onResetMemories={handleResetMemories}
+        onResetDefaults={handleResetMemories}
       />
 
       {/* Commander Clearance & Security Protocol Management */}
@@ -1172,11 +1598,49 @@ export default function App() {
       <HUDWakewordSettings
         isOpen={isWakewordModalOpen}
         config={wakewordConfig}
-        wakewordState={wakewordState}
+        state={wakewordState}
         theme={theme}
         onClose={() => setIsWakewordModalOpen(false)}
         onUpdateConfig={handleUpdateWakewordConfig}
+        onTestChime={() => SoundEffects.playWakewordChime()}
       />
+
+      {/* Native Android gesture camera settings (on-device, additive) */}
+      <HUDGestureSettings
+        isOpen={isGestureSettingsOpen}
+        theme={theme}
+        onClose={() => setIsGestureSettingsOpen(false)}
+        onWakeHud={() => {
+          setWakewordBanner('✋ FRIDAY awake, sir.');
+          setTimeout(() => setWakewordBanner(null), 3000);
+        }}
+      />
+
+      {/* FRIDAY Share — nearby file sharing over the paired-device relay */}
+      <HUDShare
+        isOpen={isShareOpen}
+        theme={theme}
+        onClose={() => setIsShareOpen(false)}
+      />
+
+      {/* Fist-gesture HUD interaction lock (real lock, tap to unlock) */}
+      {isHudLocked && (
+        <div className="fixed inset-0 z-[9998] flex items-center justify-center bg-slate-950/70 backdrop-blur-sm p-4">
+          <div className="rounded-2xl bg-slate-900 border border-amber-500/40 p-6 text-center max-w-xs">
+            <div className="text-3xl mb-2">✊</div>
+            <div className="text-sm font-mono font-bold text-slate-100">HUD LOCKED</div>
+            <p className="text-[11px] font-mono text-slate-400 mt-1">Fist gesture ne interaction lock kiya. Phone lock nahi hua — sirf HUD.</p>
+            <button
+              type="button"
+              onClick={() => setIsHudLocked(false)}
+              className="mt-4 px-5 py-2 rounded-xl text-xs font-mono font-bold text-slate-950 cursor-pointer"
+              style={{ backgroundColor: currentTheme.primary }}
+            >
+              Unlock HUD
+            </button>
+          </div>
+        </div>
+      )}
 
       {/* Floating Real-Time Screen Watching Feed (Teacher Viewfinder) */}
       {isScreenWatching && screenVideoEl && (
@@ -1225,7 +1689,7 @@ export default function App() {
         onSetTimer={(sec, lbl) => {
           setTimers((prev) => [
             ...prev,
-            { id: `timer-${Date.now()}`, seconds: sec, initialSeconds: sec, label: lbl },
+            { id: `timer-${Date.now()}`, label: lbl, totalSeconds: sec, remainingSeconds: sec, isRunning: true },
           ]);
         }}
         onAddActionCard={(card) => {
@@ -1332,15 +1796,56 @@ export default function App() {
       {/* Device Link: PC <-> Phone real relay */}
       <HUDDeviceLink isOpen={isDeviceLinkOpen} onClose={() => setIsDeviceLinkOpen(false)} />
 
-      {/* [AppBuilder hook] isolated add-on modal + launcher (existing UI untouched) */}
+      {/* Phone Assistant - Real Android Control */}
+      <HUDPhoneAssistant isOpen={isPhoneAssistantOpen} onClose={() => setIsPhoneAssistantOpen(false)} theme={theme} />
+
+      {/* Permission Center - Android Permissions */}
+      <HUDPermissionCenter isOpen={isPermissionCenterOpen} onClose={() => setIsPermissionCenterOpen(false)} theme={theme} />
+
+      {/* Screen Assist - explicit opt-in screen help (never hidden surveillance) */}
+      <HUDScreenAssist
+        isOpen={isScreenAssistOpen}
+        onClose={() => setIsScreenAssistOpen(false)}
+        theme={theme}
+        onChanged={(on) => setScreenAssistActive(on)}
+      />
+
+      {/* Screen Assist active indicator (re-opening settings stays PRO-gated) */}
+      {screenAssistActive && !isScreenAssistOpen && (
+        <button
+          type="button"
+          onClick={() => openGated('SCREEN_AWARENESS', 'PRO', 'Screen Assist', () => setIsScreenAssistOpen(true))}
+          title="Screen Assist ON — tap to manage"
+          className="fixed bottom-36 left-4 z-[9999] flex items-center gap-2 px-3 py-2 rounded-full font-mono font-bold text-[11px] shadow-2xl border-2 cursor-pointer"
+          style={{ backgroundColor: 'rgba(16,185,129,0.15)', borderColor: '#10b981', color: '#6ee7b7' }}
+        >
+          <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
+          SCREEN ASSIST ON
+        </button>
+      )}
+
+      {/* Floating PHONE ASSISTANT button (PC only — mobile me ⋯ More menu me) */}
+      {!isMobileUI && !isPhoneAssistantOpen && !isAppBuilderOpen && !isDeviceLinkOpen && !isChatOpen && (
+        <button
+          type="button"
+          onClick={() => setIsPhoneAssistantOpen(true)}
+          title="Phone Assistant - Real Android Control"
+          className="fixed bottom-[29rem] right-4 z-[9999] flex items-center gap-2 px-4 py-3 rounded-full font-bold text-sm shadow-2xl border-2 transition-all hover:scale-105 cursor-pointer"
+          style={{ backgroundColor: '#0ea5e9', borderColor: '#38bdf8', color: '#fff', boxShadow: '0 0 25px rgba(14,165,233,0.7)' }}
+        >
+          📱 PHONE
+        </button>
+      )}
+
+      {/* [AppBuilder hook] isolated add-on modal + launcher (PRO entitlement gated) */}
       <HUDAppBuilder isOpen={isAppBuilderOpen} onClose={() => setIsAppBuilderOpen(false)} />
       {!isMobileUI && !isAppBuilderOpen && !isDeviceLinkOpen && !isChatOpen && (
         <button
           type="button"
-          onClick={() => setIsAppBuilderOpen(true)}
+          onClick={() => openGated('APP_BUILDER', 'PRO', 'App Builder', () => setIsAppBuilderOpen(true))}
           title="App Builder - Calculator / Tic-Tac-Toe banao"
           className="fixed bottom-[25rem] right-4 z-[9999] flex items-center gap-2 px-4 py-3 rounded-full font-bold text-sm shadow-2xl border-2 transition-all hover:scale-105 cursor-pointer"
-          style={{ backgroundColor: '#0891b2', borderColor: '#67e8f9', color: '#fff', boxShadow: '0 0 25px rgba(8,145,178,0.7)' }}
+          style={{ backgroundColor: '#0891b2', borderColor: '#FFE600', color: '#fff', boxShadow: '0 0 25px rgba(216,138,0,0.7)' }}
         >
           🛠️ APPS
         </button>
@@ -1390,10 +1895,10 @@ export default function App() {
           title="Voice Authentication Setup"
           className="fixed bottom-20 right-4 z-[9999] flex items-center gap-2 px-4 py-3 rounded-full font-bold text-sm shadow-2xl border-2 transition-all hover:scale-105 cursor-pointer"
           style={{
-            backgroundColor: '#06b6d4',
-            borderColor: '#22d3ee',
+            backgroundColor: '#FFC400',
+            borderColor: '#FFC400',
             color: '#fff',
-            boxShadow: '0 0 25px rgba(6,182,212,0.7)',
+            boxShadow: '0 0 25px rgba(255,196,0,0.7)',
           }}
         >
           🛡️ VOICE LOCK
@@ -1418,51 +1923,88 @@ export default function App() {
         </button>
       )}
 
-      {/* [MoreMenu] Mobile: ek ⋯ MORE button me saare features (sab working, same setters) */}
+      {/* [MoreMenu] Categorized feature menu — every entry opens a real panel. */}
       <HUDMoreMenu
         isOpen={isMoreOpen}
         onClose={() => setIsMoreOpen(false)}
-        actions={[
-          { id: 'chat', label: 'Chat', icon: '💬', onOpen: () => setIsChatOpen(true) },
-          { id: 'fun', label: 'Fun Hub', icon: '🎉', onOpen: () => setIsFunHubOpen(true) },
-          { id: 'apps', label: 'App Builder', icon: '🛠️', onOpen: () => setIsAppBuilderOpen(true) },
-          { id: 'link', label: 'Device Link', icon: '🔗', onOpen: () => setIsDeviceLinkOpen(true) },
-          { id: 'voicelock', label: 'Voice Lock', icon: '🛡️', onOpen: () => setIsVoiceEnrollmentOpen(true) },
-          { id: 'faceid', label: 'Face ID', icon: '🧬', onOpen: () => setIsFaceEnrollmentOpen(true) },
-          { id: 'study', label: 'Study', icon: '📚', onOpen: () => setIsStudyMatrixOpen(true) },
-          { id: 'notes', label: 'Notes', icon: '📝', onOpen: () => setIsNotesOpen(true) },
-          { id: 'tasks', label: 'Tasks', icon: '✅', onOpen: () => setIsTasksOpen(true) },
-          { id: 'files', label: 'Files', icon: '📁', onOpen: () => setIsFilesOpen(true) },
-          { id: 'lang', label: 'Languages', icon: '🌐', onOpen: () => setIsLanguageMatrixOpen(true) },
-          { id: 'voiceset', label: 'Voice Setup', icon: '🎙️', onOpen: () => setIsVoiceSettingsOpen(true) },
-          { id: 'memory', label: 'Memory', icon: '🧠', onOpen: () => setIsMemoriesOpen(true) },
-          { id: 'auth', label: 'Lock/Auth', icon: '🔐', onOpen: () => setIsAuthModalOpen(true) },
-          { id: 'wakeword', label: 'Wakeword', icon: '👂', onOpen: () => setIsWakewordModalOpen(true) },
-          { id: 'emotion', label: 'Emotion', icon: '💓', onOpen: () => setIsEmotionalDiagnosticsOpen(true) },
-          { id: 'workbench', label: 'Code', icon: '💻', onOpen: () => setIsWorkbenchOpen(true) },
-          { id: 'protocols', label: 'Protocols', icon: '📜', onOpen: () => setIsProtocolsOpen(true) },
-          { id: 'graph', label: 'Knowledge', icon: '🕸️', onOpen: () => setIsKnowledgeGraphOpen(true) },
-          { id: 'debrief', label: 'Debrief', icon: '📊', onOpen: () => setIsDebriefOpen(true) },
-          { id: 'calc', label: 'Calculator', icon: '🔢', onOpen: () => setIsCalculatorOpen(true) },
-          { id: 'vault', label: 'Vault', icon: '🗝️', onOpen: () => setIsPrivateVaultOpen(true) },
-          { id: 'routine', label: 'Routines', icon: '⏰', onOpen: () => setIsRoutinePrefsOpen(true) },
-          { id: 'bridge', label: 'PC Bridge', icon: '🖥️', onOpen: () => setIsDesktopBridgeOpen(true) },
-          { id: 'image', label: 'Image Gen', icon: '🎨', onOpen: () => setIsImageGeneratorOpen(true) },
+        sections={[
+          { title: 'Assistant', actions: [
+            { id: 'chat', label: 'Chat', icon: '💬', onOpen: () => setIsChatOpen(true) },
+            { id: 'fun', label: 'Fun Hub', icon: '🎉', onOpen: () => setIsFunHubOpen(true) },
+            { id: 'voiceset', label: 'Voice Setup', icon: '🎙️', onOpen: () => setIsVoiceSettingsOpen(true) },
+            { id: 'wakeword', label: 'Wakeword', icon: '👂', onOpen: () => setIsWakewordModalOpen(true) },
+            { id: 'lang', label: 'Languages', icon: '🌐', onOpen: () => setIsLanguageMatrixOpen(true) },
+            { id: 'emotion', label: 'Emotion', icon: '💓', onOpen: () => setIsEmotionalDiagnosticsOpen(true) },
+          ]},
+          { title: 'Phone', actions: [
+            { id: 'phone', label: 'Phone', icon: '📱', onOpen: () => setIsPhoneAssistantOpen(true) },
+            { id: 'camera', label: 'Camera', icon: '📷', onOpen: handleToggleCamera },
+            { id: 'screenwatch', label: 'Screen Watch', icon: '👁️', badge: 'PRO', onOpen: handleToggleScreenWatch },
+            { id: 'screenassist', label: 'Screen Assist', icon: '👁️', badge: 'PRO', onOpen: () => openGated('SCREEN_AWARENESS', 'PRO', 'Screen Assist', () => setIsScreenAssistOpen(true)) },
+          ]},
+          { title: 'Share & Devices', actions: [
+            { id: 'share', label: 'Share', icon: '⤨', onOpen: () => setIsShareOpen(true) },
+            { id: 'xfer', label: 'File Transfer', icon: '⇄', onOpen: () => setIsFileTransferOpen(true) },
+            { id: 'link', label: 'Device Link', icon: '🔗', onOpen: () => setIsDeviceLinkOpen(true) },
+            { id: 'secure', label: 'Secure Devices', icon: '🔒', onOpen: () => setIsSecureDevicesOpen(true) },
+            { id: 'bridge', label: 'PC Bridge', icon: '🖥️', onOpen: () => setIsDesktopBridgeOpen(true) },
+          ]},
+          { title: 'Create', actions: [
+            { id: 'apps', label: 'App Builder', icon: '🛠️', badge: 'PRO', onOpen: () => openGated('APP_BUILDER', 'PRO', 'App Builder', () => setIsAppBuilderOpen(true)) },
+            { id: 'hologram', label: 'Hologram', icon: '❖', badge: 'PRO', onOpen: () => openGated('HOLOGRAM_LIBRARY', 'PRO', 'Hologram library', () => setLibOpen(true)) },
+            { id: 'workbench', label: 'Code', icon: '💻', onOpen: () => setIsWorkbenchOpen(true) },
+            { id: 'image', label: 'Image Gen', icon: '🎨', onOpen: () => setIsImageGeneratorOpen(true) },
+            { id: 'calc', label: 'Calculator', icon: '🔢', onOpen: () => setIsCalculatorOpen(true) },
+            { id: 'gestures', label: 'Gestures', icon: '✋', badge: 'PRO', onOpen: () => openGated('GESTURES_ADVANCED', 'PRO', 'Advanced gestures', () => setIsGestureSettingsOpen(true)) },
+          ]},
+          { title: 'Learn', actions: [
+            { id: 'study', label: 'Study', icon: '📚', onOpen: () => setIsStudyMatrixOpen(true) },
+            { id: 'notes', label: 'Notes', icon: '📝', onOpen: () => setIsNotesOpen(true) },
+            { id: 'tasks', label: 'Tasks', icon: '✅', onOpen: () => setIsTasksOpen(true) },
+            { id: 'files', label: 'Files', icon: '📁', onOpen: () => setIsFilesOpen(true) },
+            { id: 'memory', label: 'Memory', icon: '🧠', onOpen: () => setIsMemoriesOpen(true) },
+            { id: 'graph', label: 'Knowledge', icon: '🕸️', badge: 'PRO', onOpen: () => openGated('MEMORY_ADVANCED', 'PRO', 'Knowledge graph', () => setIsKnowledgeGraphOpen(true)) },
+            { id: 'protocols', label: 'Protocols', icon: '📜', badge: 'PRO', onOpen: () => openGated('AUTOMATION', 'PRO', 'Automation protocols', () => setIsProtocolsOpen(true)) },
+            { id: 'debrief', label: 'Debrief', icon: '📊', onOpen: () => setIsDebriefOpen(true) },
+            { id: 'routine', label: 'Routines', icon: '⏰', onOpen: () => setIsRoutinePrefsOpen(true) },
+          ]},
+          { title: 'Security', actions: [
+            { id: 'vault', label: 'Vault', icon: '🗝️', onOpen: () => setIsPrivateVaultOpen(true) },
+            { id: 'voicelock', label: 'Voice Lock', icon: '🛡️', onOpen: () => setIsVoiceEnrollmentOpen(true) },
+            { id: 'faceid', label: 'Face ID', icon: '🧬', onOpen: () => setIsFaceEnrollmentOpen(true) },
+            { id: 'auth', label: 'Lock/Auth', icon: '🔐', onOpen: () => setIsAuthModalOpen(true) },
+            { id: 'permissions', label: 'Permissions', icon: '🔐', onOpen: () => setIsPermissionCenterOpen(true) },
+          ]},
+          { title: 'Account', actions: [
+            { id: 'plans', label: 'Subscription', icon: '💎', onOpen: () => setIsSubscriptionOpen(true) },
+          ]},
         ]}
       />
-      {isMobileUI && !isMoreOpen && !isChatOpen && !isFunHubOpen && !isVoiceEnrollmentOpen && !isFaceEnrollmentOpen && !isDeviceLinkOpen && !isAppBuilderOpen && !isNotesOpen && !isTasksOpen && !isMemoriesOpen && !isCalculatorOpen && !isImageGeneratorOpen && !isWorkbenchOpen && !isStudyMatrixOpen && !isFilesOpen && (
+      {isMobileUI && !isMoreOpen && !isChatOpen && !isFunHubOpen && !isVoiceEnrollmentOpen && !isFaceEnrollmentOpen && !isDeviceLinkOpen && !isAppBuilderOpen && !isNotesOpen && !isTasksOpen && !isMemoriesOpen && !isCalculatorOpen && !isImageGeneratorOpen && !isWorkbenchOpen && !isStudyMatrixOpen && !isFilesOpen && !isPhoneAssistantOpen && !isScreenAssistOpen && !isGestureSettingsOpen && !isShareOpen && (
         <button
           type="button"
           onClick={() => setIsMoreOpen(true)}
           title="More - saare features"
           className="fixed bottom-20 right-4 z-[9999] flex items-center gap-2 px-5 py-3.5 rounded-full font-bold text-sm shadow-2xl border-2 active:scale-95 cursor-pointer"
-          style={{ backgroundColor: '#0891b2', borderColor: '#67e8f9', color: '#fff', boxShadow: '0 0 25px rgba(8,145,178,0.7)' }}
+          style={{ backgroundColor: '#0891b2', borderColor: '#FFE600', color: '#fff', boxShadow: '0 0 25px rgba(216,138,0,0.7)' }}
         >
           ⋯ MORE
         </button>
       )}
 
       <HUDFunHub isOpen={isFunHubOpen} onClose={() => setIsFunHubOpen(false)} />
+
+      {/* Subscription: Upgrade FRIDAY (plans, prices, restore) + upgrade prompt for locked features */}
+      <HUDSubscription isOpen={isSubscriptionOpen} onClose={() => setIsSubscriptionOpen(false)} theme={theme} />
+      <UpgradePrompt
+        isOpen={upgradeAsk !== null}
+        featureLabel={upgradeAsk?.featureLabel || ''}
+        requiredPlan={upgradeAsk?.requiredPlan || 'PRO'}
+        onViewPlans={() => { setUpgradeAsk(null); setIsSubscriptionOpen(true); }}
+        onLater={() => setUpgradeAsk(null)}
+      />
+      <HUDFileTransfer isOpen={isFileTransferOpen} onClose={() => setIsFileTransferOpen(false)} theme={theme} targetId={ftTargetId} />
+      <HUDSecureDevices isOpen={isSecureDevicesOpen} onClose={() => setIsSecureDevicesOpen(false)} theme={theme} />
 
       {/* FRIDAY Security Gate: mobile = futuristic login, PC = cyber-lock gate. Bina login HUD lock rehta hai. */}
       {!authProfile.isAuthenticated && (

@@ -27,7 +27,7 @@ export const HUDActionCard: React.FC<HUDActionCardProps> = ({
   onDismiss,
   onActionClick,
 }) => {
-  const currentTheme = THEMES[theme] || THEMES.cyan;
+  const currentTheme = THEMES[theme] || THEMES.amber;
 
   const getIcon = () => {
     switch (card.type) {
@@ -38,11 +38,11 @@ export const HUDActionCard: React.FC<HUDActionCardProps> = ({
       case 'weather':
         return <CloudSun className="w-4 h-4 text-amber-400" />;
       case 'note':
-        return <FileText className="w-4 h-4 text-sky-400" />;
+        return <FileText className="w-4 h-4 text-amber-400" />;
       case 'task':
         return <CheckSquare className="w-4 h-4 text-emerald-400" />;
       case 'file':
-        return <HardDrive className="w-4 h-4 text-cyan-400" />;
+        return <HardDrive className="w-4 h-4 text-amber-400" />;
       case 'timer':
         return <Clock className="w-4 h-4" />;
       case 'theme':

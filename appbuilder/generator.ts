@@ -98,7 +98,7 @@ export async function buildApp(spec: AppSpec, onStep?: (id: string, status: stri
     tested = await runTests(dir);
     if (tested.failed > 0 && attempt < 3) {
       step('repair', 'running', tested.output.slice(-300));
-      // Auto-repair is limited: re-emit pristine template files (generator bug fix), never touch FRIDAY code
+      // Auto-repair is limited: re-emit pristine template files (generator bug fix), never touch JARVIS code
       const fresh = filesFor(spec);
       for (const [rel, content] of Object.entries(fresh)) {
         const fp = path.join(dir, rel);

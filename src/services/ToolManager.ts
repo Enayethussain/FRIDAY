@@ -1,4 +1,6 @@
-import { ActionCard, FunctionCallItem, FunctionResponseItem, MediaViewportState, MemoryItem, NoteItem, PCFileItem, StudyCurriculum, TaskItem, ThemeAccent, WeatherInfo, ProtocolId } from '../types';
+import { ActionCard, FunctionCallItem, FunctionResponseItem, HologramControlAction, HologramState, MediaViewportState, MemoryItem, NoteItem, PCFileItem, StudyCurriculum, TaskItem, ThemeAccent, WeatherInfo, ProtocolId } from '../types';
+import { matchObject, type HologramEntry } from '../hologram/registry';
+import { getProviders, paidProvider, requestPaidGeneration } from '../hologram/providers';
 import { globalMemoryManager } from './MemoryManager';
 import { globalAuthManager } from './AuthManager';
 import { globalCurriculumManager } from './CurriculumManager';
@@ -36,6 +38,10 @@ export interface ToolCallbacks {
   onOpenRoutinePreferences?: () => void;
   onOpenDesktopBridge?: () => void;
   onSurveillanceMode?: (active: boolean) => void;
+  onOpenHologram?: (h: HologramState) => void;
+  onControlHologram?: (action: HologramControlAction, degrees?: number) => void;
+  onCompareHolograms?: (a: HologramState, b: HologramState) => void;
+  onOpenHologramLibrary?: () => void;
 }
 
 export class ToolManager {
@@ -111,7 +117,7 @@ export class ToolManager {
             status: 'file_not_found',
             searchedName: args.fileName,
             availableFiles: stored.map((f) => f.name),
-            message: `File "${args.fileName}" is not currently in FRIDAY's File Vault. Ask the user to click the PC Files icon in the top header or drag & drop their file into FRIDAY.`,
+            message: `File "${args.fileName}" is not currently in JARVIS's File Vault. Ask the user to click the PC Files icon in the top header or drag & drop their file into JARVIS.`,
           };
         }
 
@@ -212,7 +218,7 @@ export class ToolManager {
             id: `act-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
             type: 'youtube',
             title: `Playing: ${title}`,
-            description: 'Loaded in FRIDAY HUD Media Player',
+            description: 'Loaded in JARVIS HUD Media Player',
             url: externalUrl,
             actionLabel: 'Open YouTube',
             timestamp: Date.now(),
@@ -356,7 +362,7 @@ export class ToolManager {
           }
         } catch (e: any) {
           // NO fake fallback: andaze se mausam batana mana hai (spec section 9).
-          // Fail honestly taaki FRIDAY jhootha data na bole.
+          // Fail honestly taaki JARVIS jhootha data na bole.
           return {
             status: 'error',
             location,
@@ -576,7 +582,7 @@ export class ToolManager {
             id: `act-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
             type: 'theme',
             title: `Theme Recalibrated: ${chosen.toUpperCase()}`,
-            description: `FRIDAY HUD accent shifted to ${chosen}`,
+            description: `JARVIS HUD accent shifted to ${chosen}`,
             timestamp: Date.now(),
           });
         }
@@ -746,7 +752,7 @@ export class ToolManager {
             status: 'unauthorized',
             commander: profile.commanderName,
             confidence: Number(check.confidence.toFixed(3)),
-            message: `Access Denied. Live voice does not match Commander ${profile.commanderName}'s enrolled voiceprint. FRIDAY core protocols are locked exclusively to the Commander under Level 5 Security clearance.`,
+            message: `Access Denied. Live voice does not match Commander ${profile.commanderName}'s enrolled voiceprint. JARVIS core protocols are locked exclusively to the Commander under Level 5 Security clearance.`,
           };
         }
 
@@ -947,6 +953,13 @@ export class ToolManager {
             const p = parseFloat(percentMatch[1]);
             const total = parseFloat(percentMatch[2]);
             evalResult = ((p / 100) * total).toString();
+          } else if (
+            // Strict math-only allowlist: blocks code injection from model input.
+            // Allows digits, whitespace, +-*/%().**, commas, and Math.PI/sqrt/sin/cos/tan/log10/log.
+            /[^0-9+\-*/%().,\s*]/.test(clean.replace(/Math\.(PI|sqrt|sin|cos|tan|log10|log)/g, '')) ||
+            /(constructor|prototype|__proto__|function|=>|import|require|process|globalThis|window|document|fetch|XMLHttpRequest|eval|Function|setTimeout|setInterval|while|for|class|new)/i.test(clean)
+          ) {
+            evalResult = 'Syntax Error';
           } else {
             // eslint-disable-next-line no-new-func
             const res = Function(`"use strict"; return (${clean});`)();
@@ -1269,6 +1282,16 @@ export class ToolManager {
             confidence: Number(confidence.toFixed(3)),
           };
         } catch (e: any) {
+          const code = (e as any)?.code;
+          if (code === 'MODEL_LOAD_ERROR') {
+            return { status: 'error', message: 'Face models load nahi ho paye. Face Verification setup dobara kholo.' };
+          }
+          if (code === 'MODEL_INFERENCE_ERROR') {
+            return { status: 'error', message: 'Camera verification temporarily failed. Please try again.' };
+          }
+          if (code === 'FRAME_NOT_READY' || code === 'FACE_NOT_DETECTED') {
+            return { status: 'error', message: 'No face visible in the camera frame. Please face the camera in good light.' };
+          }
           return { status: 'error', message: e?.message || 'Face scan failed.' };
         }
       }
@@ -1339,6 +1362,200 @@ export class ToolManager {
         } catch (e: any) {
           return { status: 'error', message: e.message };
         }
+      }
+
+      case 'createHologram': {
+        const object = ((args.object as string) || '').trim();
+        const quality = (args.quality as string) === 'low' ? 'low' : (args.quality as string) === 'high' ? 'high' : 'auto';
+        if (!object) {
+          return { status: 'error', message: 'No object specified. VoiceResponse: Sir, kis cheez ka hologram banau?' };
+        }
+        const { loadCatalog, searchCatalog } = await import('../hologram/registry');
+        await loadCatalog().catch(() => []);
+        const found = searchCatalog(object);
+        if (found && 'ambiguous' in found) {
+          return {
+            status: 'needs_clarification',
+            options: found.options,
+            message: `Sir, kaunsa hologram dikhana hai — ${found.options.join(', ')}?`,
+          };
+        }
+        if (found && 'unavailable' in found) {
+          return {
+            status: 'error',
+            message: `Sir, ${found.entry.label} ka verified free REAL 3D model abhi library me available nahi hai. Koi aur model boliye, ya .glb/.gltf/.obj file import kar dijiye.`,
+          };
+        }
+        if (found && 'approxConfirm' in found) {
+          if (this.callbacks.onActionCard) {
+            this.callbacks.onActionCard({
+              id: `holo-approx-${Date.now()}`,
+              type: 'info',
+              title: `Approximation available: ${found.entry.label}`,
+              description: 'Verified REAL model nahi hai. "Haan dikhao" for approximation, "cancel" to abort.',
+              timestamp: Date.now(),
+            });
+          }
+          return {
+            status: 'needs_approx_confirmation',
+            object,
+            entryId: found.entry.id,
+            label: found.entry.label,
+            message: `Sir, iska verified REAL model nahi hai — sirf approximation available hai. Dikhau? Reply "haan dikhao" or "cancel".`,
+          };
+        }
+        const match = (found && 'entry' in found ? found.entry : null) || matchObject(object);
+        if (!match) {
+          // Free routes exhausted (uploads, procedural). Paid route needs explicit confirmation — never auto-spend.
+          const paid = paidProvider(await getProviders());
+          if (!paid) {
+            return {
+              status: 'error',
+              message: `No buildable model for "${object}". The offline library holds 127 models (say "open library" or browse ❖ BROWSE in the HUD) — or you can import a .glb/.gltf/.obj file.`,
+            };
+          }
+          if (this.callbacks.onActionCard) {
+            this.callbacks.onActionCard({
+              id: `holo-paid-${Date.now()}`,
+              type: 'info',
+              title: `Paid generation needed: ${object}`,
+              description: paid.estimated_cost
+                ? `Estimated cost: ${paid.estimated_cost}. Reply "use paid generation" to confirm, or "low poly" / "free version" for the free route.`
+                : 'This provider needs paid credits, but I cannot determine the exact cost. Reply "use paid generation" to confirm, or "low poly" / "free version" for the free route.',
+              timestamp: Date.now(),
+            });
+          }
+          return {
+            status: 'needs_paid_confirmation',
+            object,
+            provider: paid.provider_name,
+            estimated_cost: paid.estimated_cost,
+            message: 'Free options exhausted. Ask the user to choose paid generation or the low-poly/free route. Do NOT proceed without explicit confirmation.',
+          };
+        }
+        const holo: HologramState = {
+          isOpen: true,
+          object,
+          entryId: match.id,
+          label: match.label,
+          category: match.category,
+          kind: match.kind,
+          isApproximation: match.isApproximation,
+          note: match.description || (match.kind === 'procedural' && !match.url ? 'Resolving procedural geometry on-device.' : `Loading model file: ${match.url}`),
+          status: match.kind === 'procedural' && !match.url ? 'resolving' : 'loading',
+          modelUrl: match.url,
+          format: match.format,
+          progress: 0,
+          quality,
+        };
+        try { this.callbacks.onOpenHologram?.(holo); } catch { /* UI-only */ }
+        if (this.callbacks.onActionCard) {
+          this.callbacks.onActionCard({
+            id: `holo-${Date.now()}`,
+            type: 'info',
+            title: `Hologram: ${match.label}`,
+            description: match.isApproximation ? 'Procedural approximation — opening viewer…' : 'Opening hologram viewer…',
+            timestamp: Date.now(),
+          });
+        }
+        // NOTE: final "ready" is reported by the viewer itself after real geometry loads.
+        return { status: 'opening_viewer', entryId: match.id, label: match.label, isApproximation: match.isApproximation };
+      }
+
+      case 'confirmHologram': {
+        const choice = ((args.choice as string) || '').toLowerCase();
+        const cObject = ((args.object as string) || '').trim();
+        if (choice === 'cancel' || choice === 'no' || choice === 'free' || choice === 'dont_spend') {
+          return { status: 'cancelled', message: 'Cancelled, Sir. Koi kharcha nahi, koi model nahi khola.' };
+        }
+        if (choice === 'approx' || choice === 'yes_show' || choice === 'haan') {
+          const { loadCatalog: lcA, searchCatalog: scA } = await import('../hologram/registry');
+          await lcA().catch(() => []);
+          const h = scA(cObject);
+          const m = (h && ('entry' in h || 'approxConfirm' in h) ? (h as { entry: HologramEntry }).entry : null) || matchObject(cObject);
+          if (!m || !m.url) return { status: 'error', message: `Sir, "${cObject}" ke liye approximation bhi available nahi hai.` };
+          try {
+            this.callbacks.onOpenHologram?.({
+              isOpen: true, object: cObject, entryId: m.id, label: m.label, category: m.category,
+              kind: m.kind, isApproximation: true,
+              note: `Approximation (user-confirmed). ${m.description || ''}`.trim(),
+              status: 'loading', modelUrl: m.url, format: m.format, progress: 0,
+            });
+          } catch { /* UI-only */ }
+          return { status: 'opening_viewer', entryId: m.id, approximation: true };
+        }
+        if (choice === 'lowpoly' || choice === 'low_poly' || choice === 'cheap') {
+          const m = cObject ? matchObject(cObject) : null;
+          if (m && m.kind === 'procedural') {
+            try {
+              this.callbacks.onOpenHologram?.({
+                isOpen: true, object: cObject, entryId: m.id, label: `${m.label} (low-poly)`,
+                category: m.category, kind: 'procedural', isApproximation: true,
+                note: 'Low-poly procedural build — free route.', status: 'resolving', progress: 0, quality: 'low',
+              });
+            } catch { /* UI-only */ }
+            return { status: 'opening_viewer', entryId: m.id, quality: 'low' };
+          }
+          return { status: 'error', message: `No low-poly option for "${cObject}". Import a .glb/.gltf/.obj file, or pick a buildable shape.` };
+        }
+        if (choice === 'paid' || choice === 'yes' || choice === 'confirm') {
+          if (!cObject) return { status: 'error', message: 'No object to generate.' };
+          const r = await requestPaidGeneration(cObject, 'high');
+          if (!r.ok) return { status: 'error', message: r.error };
+          const fmt = ['glb', 'gltf', 'obj'].includes((r.type || '').toLowerCase()) ? (r.type.toLowerCase() as 'glb' | 'gltf' | 'obj') : null;
+          if (!fmt) return { status: 'error', message: `Provider returned unsupported format "${r.type}". Model rejected.` };
+          try {
+            this.callbacks.onOpenHologram?.({
+              isOpen: true, object: cObject, entryId: `paid-${Date.now()}`, label: cObject,
+              category: 'general', kind: 'external', isApproximation: false,
+              note: `Paid generation via ${r.provider}.`, status: 'loading',
+              modelUrl: r.url, format: fmt, progress: 0, quality: 'high',
+            });
+          } catch { /* UI-only */ }
+          return { status: 'opening_viewer', provider: r.provider };
+        }
+        return { status: 'error', message: `Say "use paid generation", "low poly", or "cancel".` };
+      }
+
+      case 'controlHologram': {
+        const action = (args.action as HologramControlAction) || 'reset';
+        const valid: HologramControlAction[] = ['rotate_left', 'rotate_right', 'rotate_deg', 'zoom_in', 'zoom_out', 'move_up', 'move_down', 'move_left', 'move_right', 'reset', 'spin_start', 'spin_stop', 'bigger', 'smaller', 'hide', 'close', 'view_holo', 'view_solid', 'view_wire', 'view_xray', 'labels_show', 'labels_hide', 'anim_play', 'anim_pause', 'anim_restart', 'quality_low', 'quality_med', 'quality_high', 'sync_on', 'sync_off'];
+        if (!valid.includes(action)) {
+          return { status: 'error', message: `Unknown hologram action "${action}".` };
+        }
+        try { this.callbacks.onControlHologram?.(action, args.degrees as number | undefined); } catch { /* UI-only */ }
+        return { status: 'dispatched', action };
+      }
+
+      case 'openHologramLibrary': {
+        try { this.callbacks.onOpenHologramLibrary?.(); } catch { /* UI-only */ }
+        return { status: 'opening_library', message: 'Hologram library browser opening in HUD.' };
+      }
+
+      case 'compareHolograms': {
+        const aName = ((args.a as string) || '').trim();
+        const bName = ((args.b as string) || '').trim();
+        if (!aName || !bName) {
+          return { status: 'error', message: 'Compare needs two model names. VoiceResponse: Sir, kin do models ko compare karu?' };
+        }
+        const { loadCatalog: lc2, searchCatalog: sc2 } = await import('../hologram/registry');
+        await lc2().catch(() => []);
+        const ha = sc2(aName);
+        const hb = sc2(bName);
+        const ea = (ha && 'entry' in ha ? ha.entry : null) || matchObject(aName);
+        const eb = (hb && 'entry' in hb ? hb.entry : null) || matchObject(bName);
+        if (!ea || !eb) {
+          return { status: 'error', message: `Sir, ${!ea ? `"${aName}"` : `"${bName}"`} library me available nahi hai.` };
+        }
+        const mk = (m: typeof ea, raw: string): HologramState => ({
+          isOpen: true, object: raw, entryId: m.id, label: m.label, category: m.category,
+          kind: m.kind, isApproximation: m.isApproximation,
+          note: m.description || 'Compare mode — synchronized rotation on.',
+          status: m.kind === 'procedural' && !m.url ? 'resolving' : 'loading',
+          modelUrl: m.url, format: m.format, progress: 0,
+        });
+        try { this.callbacks.onCompareHolograms?.(mk(ea, aName), mk(eb, bName)); } catch { /* UI-only */ }
+        return { status: 'opening_compare', a: ea.label, b: eb.label };
       }
 
       default:

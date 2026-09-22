@@ -15,10 +15,10 @@ interface HUDVoiceSettingsProps {
 }
 
 const VOICES: { id: LiveVoice; name: string; desc: string; tone: string }[] = [
-  { id: 'Aoede', name: 'Aoede', desc: 'Warm, energetic, charismatic female voice (Recommended)', tone: 'Natural & Expressive' },
+  { id: 'Aoede', name: 'Aoede · FRIDAY', desc: 'Warm, energetic, charismatic female voice — FRIDAY default (Recommended)', tone: 'Natural & Expressive' },
   { id: 'Kore', name: 'Kore', desc: 'Smooth, relaxed, clear and calm tone', tone: 'Calm & Professional' },
   { id: 'Puck', name: 'Puck', desc: 'Playful, lively, spirited tempo', tone: 'Cheerful & Upbeat' },
-  { id: 'Fenrir', name: 'Fenrir', desc: 'Resonant, authoritative, deep timbre', tone: 'Bold & Crisp' },
+  { id: 'Fenrir', name: 'Fenrir · JARVIS', desc: 'Deep, calm, sophisticated male voice — JARVIS voice (PRO)', tone: 'Bold & Crisp' },
   { id: 'Zephyr', name: 'Zephyr', desc: 'Soft-spoken, mellow, reflective voice', tone: 'Warm & Gentle' },
 ];
 
@@ -38,7 +38,7 @@ export const HUDVoiceSettings: React.FC<HUDVoiceSettingsProps> = ({
   onSelectWit,
   onClose,
 }) => {
-  const currentTheme = THEMES[theme] || THEMES.cyan;
+  const currentTheme = THEMES[theme] || THEMES.amber;
   const [hapticsEnabled, setHapticsEnabled] = useState(HapticFeedback.isEnabled());
 
   if (!isOpen) return null;
@@ -97,7 +97,7 @@ export const HUDVoiceSettings: React.FC<HUDVoiceSettingsProps> = ({
                   onClick={() => onSelectVoice(v.id)}
                   className={`w-full p-3 rounded-xl border text-left flex items-center justify-between transition-all cursor-pointer ${
                     isSelected
-                      ? 'bg-slate-800/80 border-cyan-500 shadow-md'
+                      ? 'bg-slate-800/80 border-amber-500 shadow-md'
                       : 'bg-slate-900/50 border-slate-800 hover:bg-slate-900 hover:border-slate-700'
                   }`}
                   style={{
@@ -161,7 +161,7 @@ export const HUDVoiceSettings: React.FC<HUDVoiceSettingsProps> = ({
         <div className="mt-6 pt-4 border-t border-slate-800">
           <div className="flex items-center justify-between gap-2">
             <div className="flex items-start gap-2.5">
-              <div className="p-1.5 rounded-lg bg-cyan-500/10 border border-cyan-500/30 text-cyan-400 mt-0.5">
+              <div className="p-1.5 rounded-lg bg-amber-500/10 border border-amber-500/30 text-amber-400 mt-0.5">
                 <Smartphone className="w-4 h-4" />
               </div>
               <div>
@@ -182,7 +182,7 @@ export const HUDVoiceSettings: React.FC<HUDVoiceSettingsProps> = ({
               }}
               className={`px-3 py-1 rounded-full text-xs font-mono font-semibold transition-all shrink-0 cursor-pointer ${
                 hapticsEnabled
-                  ? 'bg-cyan-500/20 text-cyan-300 border border-cyan-400/60 shadow-[0_0_10px_rgba(6,182,212,0.3)]'
+                  ? 'bg-amber-500/20 text-amber-300 border border-amber-400/60 shadow-[0_0_10px_rgba(255,196,0,0.3)]'
                   : 'bg-slate-800 text-slate-400 border border-slate-700'
               }`}
             >
@@ -196,21 +196,21 @@ export const HUDVoiceSettings: React.FC<HUDVoiceSettingsProps> = ({
               <button
                 type="button"
                 onClick={() => HapticFeedback.triggerStateHaptic('connecting')}
-                className="px-2.5 py-1 rounded-lg bg-slate-900 border border-slate-700 hover:border-cyan-400/50 text-[10px] font-mono text-slate-300 hover:text-cyan-300 transition-colors cursor-pointer"
+                className="px-2.5 py-1 rounded-lg bg-slate-900 border border-slate-700 hover:border-amber-400/50 text-[10px] font-mono text-slate-300 hover:text-amber-300 transition-colors cursor-pointer"
               >
                 Connecting [35,45,40]
               </button>
               <button
                 type="button"
                 onClick={() => HapticFeedback.triggerStateHaptic('listening')}
-                className="px-2.5 py-1 rounded-lg bg-slate-900 border border-slate-700 hover:border-cyan-400/50 text-[10px] font-mono text-slate-300 hover:text-cyan-300 transition-colors cursor-pointer"
+                className="px-2.5 py-1 rounded-lg bg-slate-900 border border-slate-700 hover:border-amber-400/50 text-[10px] font-mono text-slate-300 hover:text-amber-300 transition-colors cursor-pointer"
               >
                 Listening [45ms]
               </button>
               <button
                 type="button"
                 onClick={() => HapticFeedback.triggerStateHaptic('speaking')}
-                className="px-2.5 py-1 rounded-lg bg-slate-900 border border-slate-700 hover:border-cyan-400/50 text-[10px] font-mono text-slate-300 hover:text-cyan-300 transition-colors cursor-pointer"
+                className="px-2.5 py-1 rounded-lg bg-slate-900 border border-slate-700 hover:border-amber-400/50 text-[10px] font-mono text-slate-300 hover:text-amber-300 transition-colors cursor-pointer"
               >
                 Speaking [25,40,30]
               </button>

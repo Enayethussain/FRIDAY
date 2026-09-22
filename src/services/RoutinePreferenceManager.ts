@@ -57,7 +57,7 @@ const DEFAULT_ROUTINES: DailyRoutineItem[] = [
     timeSlot: '11:00 PM - 07:00 AM',
     activity: 'Nightly Sleep & Autonomous System Backup',
     category: 'night',
-    notes: 'Recharge sleep block. FRIDAY switches to standby monitoring.',
+    notes: 'Recharge sleep block. JARVIS switches to standby monitoring.',
     isActive: true,
   },
 ];
@@ -276,7 +276,7 @@ export class RoutinePreferenceManager {
   }
 
   /**
-   * Generates a context digest for Gemini model so FRIDAY knows routine and likes/dislikes
+   * Generates a context digest for Gemini model so JARVIS knows routine and likes/dislikes
    */
   getDigestForPrompt(): string {
     const likes = this.preferences.filter((p) => p.type === 'like').map((p) => `• [PASAND/LIKE]: ${p.title} - ${p.description}`).join('\n');

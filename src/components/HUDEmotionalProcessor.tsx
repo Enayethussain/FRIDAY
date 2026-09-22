@@ -38,7 +38,7 @@ const PRESET_TONES: {
     name: 'Equilibrium',
     icon: Sliders,
     desc: 'Calm cybernetic baseline • 1.0 Hz • 100% Glow',
-    color: '#06b6d4',
+    color: '#FFC400',
   },
   {
     tone: 'joyful',
@@ -93,7 +93,7 @@ export const HUDEmotionalProcessor: React.FC<HUDEmotionalProcessorProps> = ({
 }) => {
   if (!isOpen) return null;
 
-  const currentTheme = THEMES[theme] || THEMES.cyan;
+  const currentTheme = THEMES[theme] || THEMES.amber;
   const currentToneConfig = TONE_PROFILES[metadata.tone] || TONE_PROFILES.neutral;
 
   // Normalized percentages for visual bar meters
@@ -231,7 +231,7 @@ export const HUDEmotionalProcessor: React.FC<HUDEmotionalProcessorProps> = ({
               <div>
                 <div className="flex justify-between text-[11px] font-mono text-slate-400 mb-1">
                   <span className="flex items-center gap-1">
-                    <Gauge className="w-3 h-3 text-cyan-400" />
+                    <Gauge className="w-3 h-3 text-amber-400" />
                     Pulse Frequency
                   </span>
                   <span className="font-bold text-slate-200">
@@ -295,7 +295,7 @@ export const HUDEmotionalProcessor: React.FC<HUDEmotionalProcessorProps> = ({
           <div>
             <div className="flex items-center justify-between mb-2">
               <h3 className="text-xs font-mono uppercase tracking-wider text-slate-300 font-bold flex items-center gap-1.5">
-                <Sliders className="w-3.5 h-3.5 text-cyan-400" />
+                <Sliders className="w-3.5 h-3.5 text-amber-400" />
                 CONVERSATION TONE CALIBRATION PRESETS
               </h3>
               <span className="text-[10px] font-mono text-slate-500">
@@ -352,7 +352,7 @@ export const HUDEmotionalProcessor: React.FC<HUDEmotionalProcessorProps> = ({
 
           {/* Explanation note */}
           <div className="p-3 rounded-xl bg-slate-950/60 border border-slate-800/80 flex items-start gap-2 text-[11px] font-mono text-slate-400">
-            <Volume2 className="w-4 h-4 text-cyan-400 shrink-0 mt-0.5" />
+            <Volume2 className="w-4 h-4 text-amber-400 shrink-0 mt-0.5" />
             <span>
               <strong>Real-time Automatic Coupling:</strong> When speaking, FRIDAY's acoustic prosody
               engine measures vocal pitch variance and root-mean-square energy to organically surge the

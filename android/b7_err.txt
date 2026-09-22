@@ -1,0 +1,180 @@
+A:\MD ENAYET HUSSAIN\Jarvis\android\app\src\main\java\com\jarvis\ai\services\FridaySphereOverlayService.java:167: error: cannot find symbol
+        private final Paint bgPaint = new Paint();
+                      ^
+  symbol:   class Paint
+  location: class FridaySphereOverlayService.SphereView
+A:\MD ENAYET HUSSAIN\Jarvis\android\app\src\main\java\com\jarvis\ai\services\FridaySphereOverlayService.java:168: error: cannot find symbol
+        private final Paint spherePaint = new Paint(Paint.ANTI_ALIAS_FLAG);
+                      ^
+  symbol:   class Paint
+  location: class FridaySphereOverlayService.SphereView
+A:\MD ENAYET HUSSAIN\Jarvis\android\app\src\main\java\com\jarvis\ai\services\FridaySphereOverlayService.java:169: error: cannot find symbol
+        private final Paint glowPaint = new Paint(Paint.ANTI_ALIAS_FLAG);
+                      ^
+  symbol:   class Paint
+  location: class FridaySphereOverlayService.SphereView
+A:\MD ENAYET HUSSAIN\Jarvis\android\app\src\main\java\com\jarvis\ai\services\FridaySphereOverlayService.java:170: error: cannot find symbol
+        private final Paint ringPaint = new Paint(Paint.ANTI_ALIAS_FLAG);
+                      ^
+  symbol:   class Paint
+  location: class FridaySphereOverlayService.SphereView
+A:\MD ENAYET HUSSAIN\Jarvis\android\app\src\main\java\com\jarvis\ai\services\FridaySphereOverlayService.java:171: error: cannot find symbol
+        private final Paint particlePaint = new Paint(Paint.ANTI_ALIAS_FLAG);
+                      ^
+  symbol:   class Paint
+  location: class FridaySphereOverlayService.SphereView
+A:\MD ENAYET HUSSAIN\Jarvis\android\app\src\main\java\com\jarvis\ai\plugins\ScreenContextPlugin.java:146: error: cannot find symbol
+            for (Long key : appMap.descendingKeySet()) {
+                                  ^
+  symbol:   method descendingKeySet()
+  location: variable appMap of type SortedMap<Long,JSObject>
+A:\MD ENAYET HUSSAIN\Jarvis\android\app\src\main\java\com\jarvis\ai\services\FridaySphereOverlayService.java:167: error: cannot find symbol
+        private final Paint bgPaint = new Paint();
+                                          ^
+  symbol:   class Paint
+  location: class FridaySphereOverlayService.SphereView
+A:\MD ENAYET HUSSAIN\Jarvis\android\app\src\main\java\com\jarvis\ai\services\FridaySphereOverlayService.java:168: error: cannot find symbol
+        private final Paint spherePaint = new Paint(Paint.ANTI_ALIAS_FLAG);
+                                              ^
+  symbol:   class Paint
+  location: class FridaySphereOverlayService.SphereView
+A:\MD ENAYET HUSSAIN\Jarvis\android\app\src\main\java\com\jarvis\ai\services\FridaySphereOverlayService.java:168: error: cannot find symbol
+        private final Paint spherePaint = new Paint(Paint.ANTI_ALIAS_FLAG);
+                                                    ^
+  symbol:   variable Paint
+  location: class FridaySphereOverlayService.SphereView
+A:\MD ENAYET HUSSAIN\Jarvis\android\app\src\main\java\com\jarvis\ai\services\FridaySphereOverlayService.java:169: error: cannot find symbol
+        private final Paint glowPaint = new Paint(Paint.ANTI_ALIAS_FLAG);
+                                            ^
+  symbol:   class Paint
+  location: class FridaySphereOverlayService.SphereView
+A:\MD ENAYET HUSSAIN\Jarvis\android\app\src\main\java\com\jarvis\ai\services\FridaySphereOverlayService.java:169: error: cannot find symbol
+        private final Paint glowPaint = new Paint(Paint.ANTI_ALIAS_FLAG);
+                                                  ^
+  symbol:   variable Paint
+  location: class FridaySphereOverlayService.SphereView
+A:\MD ENAYET HUSSAIN\Jarvis\android\app\src\main\java\com\jarvis\ai\services\FridaySphereOverlayService.java:170: error: cannot find symbol
+        private final Paint ringPaint = new Paint(Paint.ANTI_ALIAS_FLAG);
+                                            ^
+  symbol:   class Paint
+  location: class FridaySphereOverlayService.SphereView
+A:\MD ENAYET HUSSAIN\Jarvis\android\app\src\main\java\com\jarvis\ai\services\FridaySphereOverlayService.java:170: error: cannot find symbol
+        private final Paint ringPaint = new Paint(Paint.ANTI_ALIAS_FLAG);
+                                                  ^
+  symbol:   variable Paint
+  location: class FridaySphereOverlayService.SphereView
+A:\MD ENAYET HUSSAIN\Jarvis\android\app\src\main\java\com\jarvis\ai\services\FridaySphereOverlayService.java:171: error: cannot find symbol
+        private final Paint particlePaint = new Paint(Paint.ANTI_ALIAS_FLAG);
+                                                ^
+  symbol:   class Paint
+  location: class FridaySphereOverlayService.SphereView
+A:\MD ENAYET HUSSAIN\Jarvis\android\app\src\main\java\com\jarvis\ai\services\FridaySphereOverlayService.java:171: error: cannot find symbol
+        private final Paint particlePaint = new Paint(Paint.ANTI_ALIAS_FLAG);
+                                                      ^
+  symbol:   variable Paint
+  location: class FridaySphereOverlayService.SphereView
+A:\MD ENAYET HUSSAIN\Jarvis\android\app\src\main\java\com\jarvis\ai\services\FridaySphereOverlayService.java:199: error: package Paint does not exist
+            ringPaint.setStyle(Paint.Style.STROKE);
+                                    ^
+A:\MD ENAYET HUSSAIN\Jarvis\android\app\src\main\java\com\jarvis\ai\services\FridaySphereOverlayService.java:201: error: package Paint does not exist
+            particlePaint.setStyle(Paint.Style.FILL);
+                                        ^
+Note: Some input files use or override a deprecated API.
+Note: Recompile with -Xlint:deprecation for details.
+17 errors
+
+FAILURE: Build failed with an exception.
+
+* What went wrong:
+Execution failed for task ':app:compileDebugJavaWithJavac'.
+> Compilation failed; see the compiler output below.
+  Note: Recompile with -Xlint:deprecation for details.
+  A:\MD ENAYET HUSSAIN\Jarvis\android\app\src\main\java\com\jarvis\ai\services\FridaySphereOverlayService.java:167: error: cannot find symbol
+          private final Paint bgPaint = new Paint();
+                        ^
+    symbol:   class Paint
+    location: class FridaySphereOverlayService.SphereView
+  A:\MD ENAYET HUSSAIN\Jarvis\android\app\src\main\java\com\jarvis\ai\services\FridaySphereOverlayService.java:168: error: cannot find symbol
+          private final Paint spherePaint = new Paint(Paint.ANTI_ALIAS_FLAG);
+                        ^
+    symbol:   class Paint
+    location: class FridaySphereOverlayService.SphereView
+  A:\MD ENAYET HUSSAIN\Jarvis\android\app\src\main\java\com\jarvis\ai\services\FridaySphereOverlayService.java:169: error: cannot find symbol
+          private final Paint glowPaint = new Paint(Paint.ANTI_ALIAS_FLAG);
+                        ^
+    symbol:   class Paint
+    location: class FridaySphereOverlayService.SphereView
+  A:\MD ENAYET HUSSAIN\Jarvis\android\app\src\main\java\com\jarvis\ai\services\FridaySphereOverlayService.java:170: error: cannot find symbol
+          private final Paint ringPaint = new Paint(Paint.ANTI_ALIAS_FLAG);
+                        ^
+    symbol:   class Paint
+    location: class FridaySphereOverlayService.SphereView
+  A:\MD ENAYET HUSSAIN\Jarvis\android\app\src\main\java\com\jarvis\ai\services\FridaySphereOverlayService.java:171: error: cannot find symbol
+          private final Paint particlePaint = new Paint(Paint.ANTI_ALIAS_FLAG);
+                        ^
+    symbol:   class Paint
+    location: class FridaySphereOverlayService.SphereView
+  A:\MD ENAYET HUSSAIN\Jarvis\android\app\src\main\java\com\jarvis\ai\services\FridaySphereOverlayService.java:167: error: cannot find symbol
+          private final Paint bgPaint = new Paint();
+                                            ^
+    symbol:   class Paint
+    location: class FridaySphereOverlayService.SphereView
+  A:\MD ENAYET HUSSAIN\Jarvis\android\app\src\main\java\com\jarvis\ai\services\FridaySphereOverlayService.java:168: error: cannot find symbol
+          private final Paint spherePaint = new Paint(Paint.ANTI_ALIAS_FLAG);
+                                                ^
+    symbol:   class Paint
+    location: class FridaySphereOverlayService.SphereView
+  A:\MD ENAYET HUSSAIN\Jarvis\android\app\src\main\java\com\jarvis\ai\services\FridaySphereOverlayService.java:168: error: cannot find symbol
+          private final Paint spherePaint = new Paint(Paint.ANTI_ALIAS_FLAG);
+                                                      ^
+    symbol:   variable Paint
+    location: class FridaySphereOverlayService.SphereView
+  A:\MD ENAYET HUSSAIN\Jarvis\android\app\src\main\java\com\jarvis\ai\services\FridaySphereOverlayService.java:169: error: cannot find symbol
+          private final Paint glowPaint = new Paint(Paint.ANTI_ALIAS_FLAG);
+                                              ^
+    symbol:   class Paint
+    location: class FridaySphereOverlayService.SphereView
+  A:\MD ENAYET HUSSAIN\Jarvis\android\app\src\main\java\com\jarvis\ai\services\FridaySphereOverlayService.java:169: error: cannot find symbol
+          private final Paint glowPaint = new Paint(Paint.ANTI_ALIAS_FLAG);
+                                                    ^
+    symbol:   variable Paint
+    location: class FridaySphereOverlayService.SphereView
+  A:\MD ENAYET HUSSAIN\Jarvis\android\app\src\main\java\com\jarvis\ai\services\FridaySphereOverlayService.java:170: error: cannot find symbol
+          private final Paint ringPaint = new Paint(Paint.ANTI_ALIAS_FLAG);
+                                              ^
+    symbol:   class Paint
+    location: class FridaySphereOverlayService.SphereView
+  A:\MD ENAYET HUSSAIN\Jarvis\android\app\src\main\java\com\jarvis\ai\services\FridaySphereOverlayService.java:170: error: cannot find symbol
+          private final Paint ringPaint = new Paint(Paint.ANTI_ALIAS_FLAG);
+                                                    ^
+    symbol:   variable Paint
+    location: class FridaySphereOverlayService.SphereView
+  A:\MD ENAYET HUSSAIN\Jarvis\android\app\src\main\java\com\jarvis\ai\services\FridaySphereOverlayService.java:171: error: cannot find symbol
+          private final Paint particlePaint = new Paint(Paint.ANTI_ALIAS_FLAG);
+                                                  ^
+    symbol:   class Paint
+    location: class FridaySphereOverlayService.SphereView
+  A:\MD ENAYET HUSSAIN\Jarvis\android\app\src\main\java\com\jarvis\ai\services\FridaySphereOverlayService.java:171: error: cannot find symbol
+          private final Paint particlePaint = new Paint(Paint.ANTI_ALIAS_FLAG);
+                                                        ^
+    symbol:   variable Paint
+    location: class FridaySphereOverlayService.SphereView
+  Note: Some input files use or override a deprecated API.
+  A:\MD ENAYET HUSSAIN\Jarvis\android\app\src\main\java\com\jarvis\ai\services\FridaySphereOverlayService.java:199: error: package Paint does not exist
+              ringPaint.setStyle(Paint.Style.STROKE);
+                                      ^
+  A:\MD ENAYET HUSSAIN\Jarvis\android\app\src\main\java\com\jarvis\ai\services\FridaySphereOverlayService.java:201: error: package Paint does not exist
+              particlePaint.setStyle(Paint.Style.FILL);
+                                          ^
+  A:\MD ENAYET HUSSAIN\Jarvis\android\app\src\main\java\com\jarvis\ai\plugins\ScreenContextPlugin.java:146: error: cannot find symbol
+              for (Long key : appMap.descendingKeySet()) {
+                                    ^
+    symbol:   method descendingKeySet()
+    location: variable appMap of type SortedMap<Long,JSObject>
+  17 errors
+
+* Try:
+> Check your code and dependencies to fix the compilation error(s)
+> Run with --scan to get full insights.
+
+BUILD FAILED in 1m 4s

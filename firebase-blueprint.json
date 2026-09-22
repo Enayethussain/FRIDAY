@@ -1,0 +1,14 @@
+{
+  "collections": [
+    {
+      "name": "notes",
+      "rules": ["read", "create", "update", "delete"],
+      "schema": {
+        "userId": "string",
+        "title": "string",
+        "content": "string",
+        "createdAt": "number"
+      }
+    }
+  ]
+}

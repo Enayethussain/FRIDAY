@@ -8,7 +8,7 @@ export function planApp(request: string, counter: number): AppSpec {
   else if (/calculator|calc|hisab|ginti/.test(r)) kind = 'calculator';
   if (!kind) throw new Error(`Samajh nahi aaya kaunsi app chahiye. V1 me sirf "calculator" ya "tic-tac-toe" supported hai. Request: "${request}"`);
 
-  const theme = /light/.test(r) ? 'light' : /friday|futuristic|hud|neon/.test(r) ? 'friday' : 'dark';
+  const theme = /light/.test(r) ? 'light' : /jarvis|futuristic|hud|neon/.test(r) ? 'jarvis' : 'dark';
   const features: string[] = [];
   if (kind === 'calculator') {
     features.push('basic-arithmetic', 'keyboard-support', 'history');

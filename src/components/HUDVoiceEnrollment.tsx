@@ -159,7 +159,7 @@ export function HUDVoiceEnrollment({ isOpen, onClose, onEnrollmentComplete, stat
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm">
-      <div className="relative w-full max-w-2xl mx-4 bg-gradient-to-br from-slate-900/95 to-slate-800/95 rounded-2xl border border-cyan-500/30 shadow-2xl shadow-cyan-500/20 p-8">
+      <div className="relative w-full max-w-2xl mx-4 bg-gradient-to-br from-slate-900/95 to-slate-800/95 rounded-2xl border border-amber-500/30 shadow-2xl shadow-amber-500/20 p-8">
         
         <button
           onClick={onClose}
@@ -170,7 +170,7 @@ export function HUDVoiceEnrollment({ isOpen, onClose, onEnrollmentComplete, stat
         </button>
 
         <div className="flex items-center gap-3 mb-6">
-          <ShieldCheck className="w-8 h-8 text-cyan-400" />
+          <ShieldCheck className="w-8 h-8 text-amber-400" />
           <div>
             <h2 className="text-2xl font-bold text-white">Voice Authentication Setup</h2>
             <p className="text-sm text-slate-400">Enroll your voice biometric signature</p>
@@ -180,22 +180,22 @@ export function HUDVoiceEnrollment({ isOpen, onClose, onEnrollmentComplete, stat
         {!isEnrolling && enrollmentStatus === 'idle' && (
           <div className="space-y-6">
             <div className="bg-slate-800/50 border border-slate-700 rounded-xl p-6">
-              <h3 className="text-lg font-semibold text-cyan-400 mb-3">How it works:</h3>
+              <h3 className="text-lg font-semibold text-amber-400 mb-3">How it works:</h3>
               <ul className="space-y-2 text-slate-300 text-sm">
                 <li className="flex items-start gap-2">
-                  <span className="text-cyan-400 font-bold">1.</span>
+                  <span className="text-amber-400 font-bold">1.</span>
                   <span>You'll record <strong>5 voice samples</strong> (3 seconds each)</span>
                 </li>
                 <li className="flex items-start gap-2">
-                  <span className="text-cyan-400 font-bold">2.</span>
+                  <span className="text-amber-400 font-bold">2.</span>
                   <span>FRIDAY analyzes your voice pitch, tone, and frequency patterns</span>
                 </li>
                 <li className="flex items-start gap-2">
-                  <span className="text-cyan-400 font-bold">3.</span>
+                  <span className="text-amber-400 font-bold">3.</span>
                   <span>Your voice profile is stored locally (encrypted)</span>
                 </li>
                 <li className="flex items-start gap-2">
-                  <span className="text-cyan-400 font-bold">4.</span>
+                  <span className="text-amber-400 font-bold">4.</span>
                   <span>Only your voice will be authorized to control FRIDAY</span>
                 </li>
               </ul>
@@ -210,7 +210,7 @@ export function HUDVoiceEnrollment({ isOpen, onClose, onEnrollmentComplete, stat
 
             <button
               onClick={startEnrollment}
-              className="w-full py-4 bg-gradient-to-r from-cyan-500 to-blue-500 hover:from-cyan-400 hover:to-blue-400 text-white font-semibold rounded-xl transition flex items-center justify-center gap-2"
+              className="w-full py-4 bg-gradient-to-r from-amber-500 to-amber-500 hover:from-amber-400 hover:to-amber-400 text-white font-semibold rounded-xl transition flex items-center justify-center gap-2"
             >
               <ShieldCheck className="w-5 h-5" />
               Start Voice Enrollment
@@ -221,8 +221,8 @@ export function HUDVoiceEnrollment({ isOpen, onClose, onEnrollmentComplete, stat
         {isEnrolling && (
           <div className="space-y-6">
             <div className="text-center space-y-4">
-              <div className="inline-flex items-center justify-center w-24 h-24 rounded-full bg-cyan-500/20 border-4 border-cyan-500/50 mb-4">
-                <Mic className={`w-12 h-12 text-cyan-400 ${isRecording ? 'animate-pulse' : ''}`} />
+              <div className="inline-flex items-center justify-center w-24 h-24 rounded-full bg-amber-500/20 border-4 border-amber-500/50 mb-4">
+                <Mic className={`w-12 h-12 text-amber-400 ${isRecording ? 'animate-pulse' : ''}`} />
               </div>
 
               <div>
@@ -233,7 +233,7 @@ export function HUDVoiceEnrollment({ isOpen, onClose, onEnrollmentComplete, stat
                 </h3>
                 
                 {enrollmentStatus === 'recording' && (
-                  <p className="text-cyan-400 text-lg font-semibold mb-4">
+                  <p className="text-amber-400 text-lg font-semibold mb-4">
                     "{phrases[currentSample]}"
                   </p>
                 )}
@@ -241,7 +241,7 @@ export function HUDVoiceEnrollment({ isOpen, onClose, onEnrollmentComplete, stat
 
               <div className="w-full bg-slate-700 rounded-full h-3 overflow-hidden">
                 <div 
-                  className="h-full bg-gradient-to-r from-cyan-500 to-blue-500 transition-all duration-500"
+                  className="h-full bg-gradient-to-r from-amber-500 to-amber-500 transition-all duration-500"
                   style={{ width: `${progress * 100}%` }}
                 />
               </div>
@@ -272,7 +272,7 @@ export function HUDVoiceEnrollment({ isOpen, onClose, onEnrollmentComplete, stat
             </div>
             <button
               onClick={startEnrollment}
-              className="w-full py-3 bg-cyan-500 hover:bg-cyan-400 text-white font-semibold rounded-xl transition"
+              className="w-full py-3 bg-amber-500 hover:bg-amber-400 text-white font-semibold rounded-xl transition"
             >
               Try Again
             </button>

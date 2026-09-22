@@ -6,8 +6,131 @@
   --font-mono: "JetBrains Mono", ui-monospace, monospace;
 }
 
+/* JARVIS centralized theme — dark metallic amber reactor identity */
+:root {
+  --friday-bg: #030405;
+  --friday-bg-secondary: #080A0D;
+  --friday-primary: #FFC400;
+  --friday-secondary: #FFB000;
+  --friday-highlight: #FFE600;
+  --friday-deep-amber: #D88A00;
+  --friday-border: rgba(255, 196, 0, 0.28);
+  --friday-muted: #8a7a4a;
+  --friday-error: #f43f5e;
+  /* Safe-area insets (0px fallback for Android 8 / older WebViews). */
+  --sat: env(safe-area-inset-top, 0px);
+  --sab: env(safe-area-inset-bottom, 0px);
+  --sal: env(safe-area-inset-left, 0px);
+  --sar: env(safe-area-inset-right, 0px);
+  /* Adaptive orb + type scale: one fluid system, no per-phone hacks. */
+  --friday-orb-zone: clamp(220px, 38dvh, 380px);
+  --friday-modal-w: min(92vw, 42rem);
+}
+
+/* One adaptive UI system: viewport height with dvh fallback chain. */
+html, body, #root {
+  height: 100%;
+}
+html {
+  /* Never trap vertical document scroll (public web pages must reach the
+     footer); only clip accidental horizontal overflow. The dashboard shell
+     (#friday-root) keeps its own h-dvh + overflow-hidden containment. */
+  overflow-x: clip;
+}
+body {
+  overscroll-behavior-y: auto;
+  -webkit-text-size-adjust: 100%;
+  text-size-adjust: 100%;
+}
+#friday-root, #root {
+  min-height: 100vh;
+  min-height: 100dvh;
+}
+
+/* Orb zone: fluid height instead of one hard-coded size per device. */
+.friday-orb-zone {
+  height: 300px;
+  height: var(--friday-orb-zone);
+  min-height: 200px;
+  max-height: 46dvh;
+}
+
+/* All bottom sheets / modals: safe areas + dvh-capped scroll, one pattern. */
+.friday-sheet {
+  max-height: 88vh;
+  max-height: 88dvh;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  -webkit-overflow-scrolling: touch;
+  padding-bottom: max(1.5rem, env(safe-area-inset-bottom, 0px));
+  padding-left: max(1.25rem, env(safe-area-inset-left, 0px));
+  padding-right: max(1.25rem, env(safe-area-inset-right, 0px));
+}
+
+/* More menu grid: auto-fit cards instead of a fixed 3-column phone layout. */
+.friday-more-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(88px, 1fr));
+  gap: 0.625rem;
+}
+.friday-more-grid button {
+  min-height: 44px;
+  min-width: 44px;
+}
+
+/* Chat / keyboard safety: input row sticks above the keyboard + gestures. */
+.friday-chat-panel {
+  height: 80vh;
+  height: min(80vh, 80dvh);
+  padding-bottom: env(safe-area-inset-bottom, 0px);
+}
+.friday-chat-scroll {
+  overscroll-behavior: contain;
+  -webkit-overflow-scrolling: touch;
+}
+
+/* Small screens: keep controls reachable, never shrink text unreadable. */
+@media (max-width: 380px) {
+  :root { --friday-orb-zone: clamp(190px, 32dvh, 280px); }
+  .friday-more-grid { grid-template-columns: repeat(auto-fit, minmax(78px, 1fr)); }
+}
+
+/* Large phones / tablets: cap content width, center, balanced spacing. */
+@media (min-width: 768px) {
+  :root { --friday-orb-zone: clamp(280px, 40dvh, 420px); }
+}
+@media (min-width: 1024px) {
+  :root { --friday-orb-zone: clamp(300px, 42dvh, 460px); }
+}
+
+/* Landscape: shorter orb zone so controls stay visible without scrolling. */
+@media (orientation: landscape) and (max-height: 500px) {
+  :root { --friday-orb-zone: clamp(150px, 44dvh, 240px); }
+  .friday-sheet { max-height: 92vh; max-height: 92dvh; }
+}
+
+/* System font scaling: never clip, always wrap. */
+.friday-wrap {
+  overflow-wrap: anywhere;
+  word-break: break-word;
+  hyphens: auto;
+}
+
+/* Touch targets: every interactive button stays usable on all phones. */
+button, [role="button"] {
+  touch-action: manipulation;
+}
+
+/* Honor reduced motion on low/mid-range devices (no heavy resync needed). */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    transition-duration: 0.01ms !important;
+  }
+}
+
 .hud-glass {
-  background: linear-gradient(135deg, rgba(13, 20, 38, 0.85), rgba(5, 7, 15, 0.9));
+  background: linear-gradient(135deg, rgba(16, 12, 4, 0.88), rgba(3, 4, 5, 0.92));
   backdrop-filter: blur(16px);
   -webkit-backdrop-filter: blur(16px);
 }

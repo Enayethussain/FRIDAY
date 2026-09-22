@@ -45,7 +45,7 @@ export const HUDAuthModal: React.FC<HUDAuthModalProps> = ({
 
   if (!isOpen) return null;
 
-  const currentTheme = THEMES[theme] || THEMES.cyan;
+  const currentTheme = THEMES[theme] || THEMES.amber;
 
   const handleSave = (e: React.FormEvent) => {
     e.preventDefault();
@@ -155,7 +155,7 @@ export const HUDAuthModal: React.FC<HUDAuthModalProps> = ({
                   required
                   value={name}
                   onChange={(e) => setName(e.target.value)}
-                  className="w-full bg-slate-950 border border-slate-700 rounded-lg pl-8 pr-3 py-1.5 text-xs font-mono text-slate-100 focus:outline-none focus:border-cyan-400"
+                  className="w-full bg-slate-950 border border-slate-700 rounded-lg pl-8 pr-3 py-1.5 text-xs font-mono text-slate-100 focus:outline-none focus:border-amber-400"
                 />
               </div>
             </div>
@@ -169,7 +169,7 @@ export const HUDAuthModal: React.FC<HUDAuthModalProps> = ({
                 required
                 value={callSign}
                 onChange={(e) => setCallSign(e.target.value)}
-                className="w-full bg-slate-950 border border-slate-700 rounded-lg px-3 py-1.5 text-xs font-mono text-slate-100 focus:outline-none focus:border-cyan-400"
+                className="w-full bg-slate-950 border border-slate-700 rounded-lg px-3 py-1.5 text-xs font-mono text-slate-100 focus:outline-none focus:border-amber-400"
               />
             </div>
           </div>
@@ -184,7 +184,7 @@ export const HUDAuthModal: React.FC<HUDAuthModalProps> = ({
                 required
                 value={clearance}
                 onChange={(e) => setClearance(e.target.value)}
-                className="w-full bg-slate-950 border border-slate-700 rounded-lg px-3 py-1.5 text-xs font-mono text-slate-100 focus:outline-none focus:border-cyan-400"
+                className="w-full bg-slate-950 border border-slate-700 rounded-lg px-3 py-1.5 text-xs font-mono text-slate-100 focus:outline-none focus:border-amber-400"
               />
             </div>
 
@@ -207,7 +207,7 @@ export const HUDAuthModal: React.FC<HUDAuthModalProps> = ({
                 value={curPin}
                 onChange={(e) => setCurPin(e.target.value)}
                 placeholder="••••"
-                className="w-full bg-slate-950 border border-slate-700 rounded-lg px-3 py-1.5 text-xs font-mono text-slate-100 focus:outline-none focus:border-cyan-400"
+                className="w-full bg-slate-950 border border-slate-700 rounded-lg px-3 py-1.5 text-xs font-mono text-slate-100 focus:outline-none focus:border-amber-400"
               />
             </div>
             <div>
@@ -217,7 +217,7 @@ export const HUDAuthModal: React.FC<HUDAuthModalProps> = ({
                 value={newPin}
                 onChange={(e) => setNewPin(e.target.value)}
                 placeholder="••••"
-                className="w-full bg-slate-950 border border-slate-700 rounded-lg px-3 py-1.5 text-xs font-mono text-slate-100 focus:outline-none focus:border-cyan-400"
+                className="w-full bg-slate-950 border border-slate-700 rounded-lg px-3 py-1.5 text-xs font-mono text-slate-100 focus:outline-none focus:border-amber-400"
               />
             </div>
             <button
@@ -240,11 +240,11 @@ export const HUDAuthModal: React.FC<HUDAuthModalProps> = ({
               id="modalEnforceOnly"
               checked={enforceOnly}
               onChange={(e) => setEnforceOnly(e.target.checked)}
-              className="mt-0.5 rounded bg-slate-900 border-slate-700 text-cyan-500 focus:ring-0 cursor-pointer"
+              className="mt-0.5 rounded bg-slate-900 border-slate-700 text-amber-500 focus:ring-0 cursor-pointer"
             />
             <label htmlFor="modalEnforceOnly" className="cursor-pointer">
               <div className="text-xs font-mono font-bold text-slate-200 flex items-center gap-1.5">
-                <ShieldCheck className="w-4 h-4 text-cyan-400" />
+                <ShieldCheck className="w-4 h-4 text-amber-400" />
                 <span>Enforce Commander-Only Protocol ("Only I can talk to FRIDAY")</span>
               </div>
               <p className="text-[11px] text-slate-400 font-mono mt-1 leading-relaxed">

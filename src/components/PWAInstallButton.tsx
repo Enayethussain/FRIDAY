@@ -59,16 +59,16 @@ export const PWAInstallButton: React.FC<PWAInstallButtonProps> = ({ theme = 'cya
           <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/75 backdrop-blur-sm p-4 animate-in fade-in">
             <div className="w-full max-w-sm rounded-xl bg-slate-900 border border-slate-700/80 p-6 shadow-2xl relative">
               <h3 className="text-lg font-semibold text-slate-100 font-display mb-4 flex items-center gap-2">
-                <Download className="w-5 h-5 text-cyan-400" />
+                <Download className="w-5 h-5 text-amber-400" />
                 Install on iPhone / iPad
               </h3>
               <div className="space-y-3 text-sm text-slate-300 font-sans p-4 rounded-lg bg-slate-800/50 border border-slate-700">
                 <p className="flex items-start gap-2">
-                  <span className="text-cyan-400 font-bold">1.</span>
+                  <span className="text-amber-400 font-bold">1.</span>
                   <span>Tap the <strong>Share</strong> button in the Safari toolbar at the bottom of your screen.</span>
                 </p>
                 <p className="flex items-start gap-2">
-                  <span className="text-cyan-400 font-bold">2.</span>
+                  <span className="text-amber-400 font-bold">2.</span>
                   <span>Scroll down and tap <strong>Add to Home Screen</strong>.</span>
                 </p>
               </div>

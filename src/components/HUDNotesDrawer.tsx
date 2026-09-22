@@ -25,7 +25,7 @@ export const HUDNotesDrawer: React.FC<HUDNotesDrawerProps> = ({
   const [isAdding, setIsAdding] = useState(false);
   const [isListening, setIsListening] = useState(false);
 
-  const currentTheme = THEMES[theme] || THEMES.cyan;
+  const currentTheme = THEMES[theme] || THEMES.amber;
 
   if (!isOpen) return null;
 
@@ -136,7 +136,7 @@ export const HUDNotesDrawer: React.FC<HUDNotesDrawerProps> = ({
               placeholder="Note Title..."
               value={newTitle}
               onChange={(e) => setNewTitle(e.target.value)}
-              className="w-full px-3 py-1.5 rounded-lg bg-slate-900 border border-slate-700 text-xs font-mono text-slate-100 placeholder-slate-500 focus:outline-none focus:border-cyan-500"
+              className="w-full px-3 py-1.5 rounded-lg bg-slate-900 border border-slate-700 text-xs font-mono text-slate-100 placeholder-slate-500 focus:outline-none focus:border-amber-500"
               autoFocus
             />
             <textarea
@@ -144,7 +144,7 @@ export const HUDNotesDrawer: React.FC<HUDNotesDrawerProps> = ({
               value={newContent}
               onChange={(e) => setNewContent(e.target.value)}
               rows={3}
-              className="w-full px-3 py-1.5 rounded-lg bg-slate-900 border border-slate-700 text-xs font-mono text-slate-100 placeholder-slate-500 focus:outline-none focus:border-cyan-500"
+              className="w-full px-3 py-1.5 rounded-lg bg-slate-900 border border-slate-700 text-xs font-mono text-slate-100 placeholder-slate-500 focus:outline-none focus:border-amber-500"
             />
             <div className="flex justify-between items-center mt-2">
               <button

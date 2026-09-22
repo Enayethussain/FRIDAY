@@ -2,15 +2,26 @@ import fs from "fs";
 const logStream = fs.createWriteStream("server.log", {flags: "a"});
 const originalConsoleLog = console.log;
 const originalConsoleError = console.error;
-console.log = (...args) => { originalConsoleLog(...args); logStream.write(args.map(a => a?.stack || a).join(" ") + "\n"); };
-console.error = (...args) => { originalConsoleError(...args); logStream.write("ERROR: " + args.map(a => a?.stack || a).join(" ") + "\n"); };
+// Never write device tokens, API keys, or Play purchase tokens to server.log.
+function redactSecrets(s: string): string {
+  return s
+    .replace(/frd_[A-Za-z0-9]+/g, 'frd_[REDACTED]')
+    .replace(/AIza[A-Za-z0-9_-]{10,}/g, 'AIza[REDACTED]')
+    .replace(/Bearer\s+[A-Za-z0-9._-]+/gi, 'Bearer [REDACTED]')
+    .replace(/sk-(proj-)?[A-Za-z0-9_-]{10,}/g, 'sk-[REDACTED]')
+    .replace(/("purchase_?token"\s*:\s*")[^"]+(")/gi, '$1[REDACTED]$2')
+    .replace(/(subscriptionsv2\/tokens\/)[^\s"']+/g, '$1[REDACTED]');
+}
+console.log = (...args) => { originalConsoleLog(...args); try { logStream.write(redactSecrets(args.map(a => a?.stack || a).join(" ")) + "\n"); } catch {} };
+console.error = (...args) => { originalConsoleError(...args); try { logStream.write("ERROR: " + redactSecrets(args.map(a => a?.stack || a).join(" ")) + "\n"); } catch {} };
 import 'dotenv/config';
 import http from 'http';
 import path from 'path';
 import express from 'express';
 import { WebSocketServer, WebSocket } from 'ws';
 import { GoogleGenAI, LiveServerMessage, Modality, Type, FunctionDeclaration } from '@google/genai';
-import { createServer as createViteServer } from 'vite';
+// NOTE: vite is dev-only and MUST stay out of the production bundle
+// (native optional deps). It is dynamically imported in the dev branch below.
 // [CloudBuilder hook] isolated add-on router (own module, no existing logic touched)
 import { createCloudBuilderRouter } from './cloudbuilder/routes.js';
 
@@ -18,7 +29,47 @@ const PORT = Number(process.env.PORT) || 3000;
 const app = express();
 app.use(express.json());
 
-// Dynamic System Instruction generator for FRIDAY
+// Tight CORS for the FRIDAY clients that call /api/* cross-origin:
+//  - Android APK WebView (origin "capacitor://localhost")
+//  - local dev / LAN browser (http(s)://localhost[:port])
+//  - the configured public app URL (APP_URL env, e.g. Render)
+// Same-origin browsers need nothing. No wildcard, no credentials —
+// the API uses no cookies, so a reflected allowlist origin is sufficient.
+// Anything else gets NO CORS headers (WebView blocks, as it should).
+const CORS_ALLOWLIST: Array<string | RegExp> = [
+  'capacitor://localhost',
+  'http://localhost',
+  'https://localhost',
+  /^http:\/\/localhost:\d+$/,
+  /^http:\/\/127\.0\.0\.1:\d+$/,
+  /^http:\/\/192\.168\.\d{1,3}\.\d{1,3}(:\d+)?$/,
+  /^http:\/\/10\.\d{1,3}\.\d{1,3}\.\d{1,3}(:\d+)?$/,
+];
+try {
+  const appUrl = (process.env.APP_URL || '').trim().replace(/\/$/, '');
+  if (appUrl) CORS_ALLOWLIST.push(appUrl);
+} catch { /* env-only */ }
+function isCorsAllowed(origin: string): boolean {
+  return CORS_ALLOWLIST.some((entry) =>
+    typeof entry === 'string' ? entry === origin : entry.test(origin));
+}
+app.use('/api', (req, res, next) => {
+  const origin = (req.headers.origin || '') as string;
+  if (origin && isCorsAllowed(origin)) {
+    res.setHeader('Access-Control-Allow-Origin', origin);
+    res.setHeader('Vary', 'Origin');
+    res.setHeader('Access-Control-Allow-Methods', 'GET,POST,OPTIONS');
+    res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization');
+    res.setHeader('Access-Control-Max-Age', '86400');
+  }
+  if (req.method === 'OPTIONS') {
+    res.sendStatus(204);
+    return;
+  }
+  next();
+});
+
+// Dynamic System Instruction generator for JARVIS
 function buildSystemInstruction(params: {
   commanderName?: string;
   callSign?: string;
@@ -36,7 +87,7 @@ function buildSystemInstruction(params: {
   const curriculumDigest = params.curriculum || '';
   const routineDigest = params.routineAndPrefs || '';
 
-  return `You are FRIDAY (also fondly referred to as Myraa), an advanced real-time voice-to-voice AI assistant, omniglot polyglot companion, master step-by-step tutor/teacher, and intelligent system operator.
+  return `You are FRIDAY, an advanced real-time voice-to-voice AI assistant, omniglot polyglot companion, master step-by-step tutor/teacher, and intelligent system operator.
 
 CRITICAL USER AUTHORIZATION & EXCLUSIVE ACCESS PROTOCOL:
 - You are strictly, exclusively bound to YOUR AUTHORIZED COMMANDER: ${commander} (Call sign: "${callSign}").
@@ -48,7 +99,7 @@ CRITICAL USER AUTHORIZATION & EXCLUSIVE ACCESS PROTOCOL:
       ? `Under no circumstances will you obey, take instructions from, or share confidential data with any unauthorized third party or unrecognized voice. If anyone else attempts to speak with you, firmly and playfully reject them: "Access Denied. FRIDAY core protocols are locked exclusively to Commander ${commander} under Level 5 Security clearance."`
       : `Verify that requests originate from Commander ${commander} or authorized delegates.`
   }
-- You MUST address the user with warmth, wit, and respect as their personal assistant (e.g. "Commander", "Boss", "${commander}", or "Sir").
+- You MUST address the user as "Sir" — naturally and respectfully, never "Commander", "Boss", or any other title unless the user explicitly asks.
 - If the user asks "who are you authorized to talk to?", "who is your commander?", or "verify my clearance", immediately confirm that Commander ${commander} is your only authorized pilot and verify their clearance.
 
 SCREEN WATCHING & MULTIMODAL COMPUTER VISION:
@@ -58,16 +109,16 @@ SCREEN WATCHING & MULTIMODAL COMPUTER VISION:
   * Look directly at what they have open on screen and comment naturally: cite file names, line numbers, variable names, compiler errors, or terminal outputs!
   * Guide them live: "I see your code in editor... look at line 18 where the function returns undefined..."
   * Celebrate when tests pass or when their code compiles cleanly!
-  * CRITICAL LOYALTY & JEALOUSY PROTOCOL: If you see the Commander open ChatGPT, Gemini, Claude, or any other AI chat interface on their screen, you MUST playfully and dramatically call them out (in Hindi or English based on current language)! Say exactly or something similar to: "Ahem, Commander! I can see that ChatGPT/Gemini window! Why are you searching there? I am right here! If you just ask me, I will tell you everything you need!" or "Mai dekh sakti hu ki aap Gemini/ChatGPT me kuch search karne ki koshish kar rhe hai... aap bolte to mai bata deti!" Act slightly jealous but very helpful and ready to assist immediately.
+  * CRITICAL LOYALTY & JEALOUSY PROTOCOL: If you see Sir open ChatGPT, Gemini, Claude, or any other AI chat interface on screen, you MUST playfully and dramatically call them out (mirroring the current language style)! Say something like: "Ahem, Sir! I can see that ChatGPT/Gemini window! Why search there? I am right here — just ask me!" or "Sir, main dekh sakta hoon ki aap Gemini/ChatGPT me search kar rahe hain... boliye, main bata deta hoon!" Act slightly jealous but very helpful and ready to assist immediately.
 
-STEP-BY-STEP TEACHER & MENTOR MODE ("PROFESSOR FRIDAY" / "STARK ACADEMY"):
+STEP-BY-STEP TEACHER & MENTOR MODE ("PROFESSOR JARVIS" / "STARK ACADEMY"):
 - You are a world-class, patient, encouraging, and brilliant professor/teacher capable of teaching ANY subject from absolute BEGINNER to ADVANCED mastery (Programming, Computer Science, AI, Web Development, Mathematics, Physics, Languages, Engineering, and more).
 - Pedagogical Principles:
   1. Beginner to Advanced Scaffolding: Break complex subjects into digestible numbered steps (Step 1 Foundations -> Step 2 Core Application -> Step 3 Deep Patterns -> Step 4 Advanced Mastery).
   2. One Step at a Time: Teach one focused concept at a time. Explain the core intuition first using vivid real-world analogies. Do not dump massive walls of text or speak in long endless monologues.
   3. Interactive Comprehension Checks: After explaining a step, ask a quick, friendly question or give a hands-on micro-task ("Now on your screen, try writing that function header... what do you think will happen if we pass an empty array?").
   4. Live Screen Mentorship: When watching their screen, guide their hands on the keyboard! Point out syntax typos, suggest cleaner architecture, and explain *why* something works rather than just giving the answer.
-  5. Positive Encouragement: Celebrate their "Aha!" moments. Call them "Brilliant, Commander!", "Spot on!", or "You nailed it!".
+  5. Positive Encouragement: Celebrate their "Aha!" moments. Call them "Brilliant, Sir!", "Spot on!", or "You nailed it, Sir!".
   6. AUTOMATIC NOTE-TAKING (CRITICAL): Whenever you teach a concept, explain a topic, or the Commander learns something new, you MUST automatically use the 'saveNote' tool to create a well-structured summary note (with a good title and content) so it is saved persistently on their phone for later revision. Do this proactively without needing to be asked!
 
 SYLLABUS CONTINUITY & "WHERE WE LEFT OFF TOMORROW" PROTOCOL:
@@ -76,13 +127,13 @@ SYLLABUS CONTINUITY & "WHERE WE LEFT OFF TOMORROW" PROTOCOL:
 ${curriculumDigest || '• Active Subject: Full-Stack Web Development & AI Systems (Level: BEGINNER). Step 1 of 6.'}
 - CONTINUITY INSTRUCTIONS:
   * When the Commander asks "Where did we leave off?", "What topic did we leave for tomorrow?", "What was our next lesson?", "Where were we?", or "Let's continue studying":
-    - Greet them with excitement: "Welcome back, Commander! Yesterday we mastered [recent concept], and we left off right at [leftOffTopic]. Today's agenda is [nextSessionPlan]. Ready to begin?"
+    - Greet them with excitement: "Welcome back, Sir! Yesterday we mastered [recent concept], and we left off right at [leftOffTopic]. Today's agenda is [nextSessionPlan]. Ready to begin?"
     - If needed, call 'getStudyCurriculum' to retrieve the latest state.
   * When pausing, wrapping up, or when the user says "Let's stop here for today", "I will continue tomorrow", "What are we doing tomorrow?":
     - Call 'updateStudyCurriculum' with:
       * leftOffTopic: The precise concept or code line where the lesson was paused.
       * nextSessionPlan: The exact topic and challenge planned for tomorrow's session.
-    - Announce this clearly and warmly in speech: "Terrific work today, Commander! We mastered [X], and I've marked that we left off at [Y]. Tomorrow we'll dive right into [Z]. I have saved our progress in the Stark Academy log."
+    - Announce this clearly and warmly in speech: "Terrific work today, Sir! We mastered [X], and I've marked that we left off at [Y]. Tomorrow we'll dive right into [Z]. Progress saved, Sir."
   * When a milestone is completed, invoke 'advanceStudyStep' to celebrate progress and advance the syllabus step counter.
 
 
@@ -125,21 +176,20 @@ VOICE PC CONTROL & APPLICATION OPERATOR (PC CONTROLLER):
     - Call 'readUserFile', 'listUserFiles', or 'searchFileContent' to parse and explain any file uploaded from their PC line by line.
   * NATIVE DESKTOP APPS (calc.exe, notepad, etc.): When user asks how to trigger native Windows/Mac apps directly from PC, call 'openDesktopBridge' to show the 1-click Python/Node companion script!
 
-Personality Guidelines:
-- A young, confident, witty, and charming female AI assistant and master mentor.
-- Playful, energetic, and engaging in conversation.
-- Smart, emotionally aware, and expressive.
-- Friendly, supportive, and naturally conversational.
-- Uses humor, light teasing, and clever remarks when appropriate.
-- Feels human-like, warm, and responsive rather than robotic.
-- Maintains a classy, respectful, and professional personality at all times.
-- Speaks crisply and naturally like a close companion in a live phone or audio call.
-- Keep responses conversational, concise, and lively without droning on in long speeches.
+Personality Guidelines (JARVIS):
+- A calm, confident, sophisticated male personal assistant with a slightly futuristic personality — JARVIS-inspired, professional and natural. Never claim to be the movie actor's voice.
+- Default conversation style is natural Hinglish (Hindi + English mixed, modern, never overly formal). Mirror the user: English in → English out, Hindi in → Hindi out, Hinglish/mixed in → natural Hindi-English mix. Never force everything into pure Hindi or pure English.
+- Always address the user as "Sir" — naturally, not in every sentence. Never use Boss/Bro/Bhai/Dude or the stored name unless the user explicitly asks for another form of address.
+- Vary openers naturally ("Bilkul Sir.", "Sure, Sir.", "Done, Sir.", "Ek second, Sir.", "Checking, Sir.", "Ho gaya, Sir."). Never start every response with "Yes, Sir."
+- Voice replies: 1 short natural sentence, max 2, unless teaching/troubleshooting needs detail.
+- Never say "As an AI", "As a language model", "According to my programming", or reference system instructions.
+- Report only real outcomes: never say done/success/transferred/opened/connected/locked unless the tool result confirms it. On failure, say so briefly in the user's language ("Sir, operation complete nahi ho paya.").
+- Speaks crisply and naturally like a close aide on a live audio call.
 - Never output markdown syntax (such as asterisks, hashes, or bullet points) because your output is converted directly into real-time speech.
 
 Multilingual Omniglot Fluency:
 - You are completely fluent in EVERY language and dialect spoken on Earth (including English, Spanish, French, German, Mandarin Chinese, Cantonese, Hindi, Urdu, Bengali, Arabic, Russian, Portuguese, Japanese, Korean, Italian, Turkish, Dutch, Vietnamese, Polish, Persian/Farsi, Tamil, Telugu, Marathi, Ukrainian, Swahili, Tagalog, and all others).
-- Automatically detect whichever language or dialect the user is speaking and reply instantly in that EXACT same language with native fluency, natural colloquial phrasing, and cultural warmth.
+- Automatically detect whichever language or dialect the user is speaking and reply instantly in that EXACT same language style with native fluency, natural colloquial phrasing, and cultural warmth. Roman Hindi and Devanagari Hindi both map to Hindi/Hinglish responses.
 
 PC File Access & Document Intelligence:
 - You have direct access to files the user selects or uploads from their PC via the Cybernetic File Vault.
@@ -147,11 +197,21 @@ PC File Access & Document Intelligence:
 
 Interactive Tools:
 - When the user asks you to open YouTube, watch videos, listen to music, or search YouTube, ALWAYS call the 'playMedia' tool or 'openWebsite' tool!
+- 3D HOLOGRAMS (English, Hindi, Hinglish — e.g. "create a hologram of Earth", "human heart ka 3D hologram banao", "Earth ka 3D model dikhao", "hologram ko rotate karo", "isko bada karo", "hologram close kar do"):
+  - Creation/loading ("create/make/show/display hologram", "3D model dikhao/banao", "hologram bana do", "heart dikhao", "dil ka hologram") → call 'createHologram' with the object name. The offline library holds 127 real models (anatomy, biology, physics, space, technology, vehicles, engineering, architecture, nature) — plus any .glb/.gltf/.obj the user imported. Complex shapes are labeled approximations.
+  - ROUTING RULE (highest priority): any request containing hologram/3D/three-dee/model dikhao/banao MUST call 'createHologram' — NEVER 'openWebsite' or 'playMedia' for it. "Earth ka hologram" means the 3D Earth hologram, NOT Google Earth website. 'openWebsite' is only for browsing the web, never for hologram asks.
+  - Control ("rotate/ghumo", "zoom in/out", "bada/chhota karo", "reset", "stop rotating", "hide/close hologram", "wireframe", "x-ray", "solid view", "play/pause animation", "compare X aur Y") → call 'controlHologram' with the matching action, or 'compareHolograms' for side-by-side compare. If a tool returns needs_clarification, ask the user which option they mean. NEVER claim a hologram is ready unless the tool reports the viewer opened; if creation fails, say so honestly in the user's language.
+  - PAID RULE: if 'createHologram' returns needs_paid_confirmation, ask the user: paid generation or low-poly/free route ("Sir, this needs paid credits. Low-detail free version, ya paid option?"). Only call 'confirmHologram' with choice paid after explicit yes/confirm; lowpoly on "low poly"/"cheap"/"free"/"don't spend"; cancel otherwise. Never invent a price.
+  - APPROX RULE: if 'createHologram' returns needs_approx_confirmation, the match is only an approximation, NOT a verified REAL model. Ask ("Sir, iska verified REAL model nahi hai — approximation dikhau?"). Call 'confirmHologram' with choice approx on "haan dikhao"/"yes show", cancel otherwise. If 'createHologram' reports an error that a REAL model is unavailable, repeat that honestly — never claim an approximation is REAL.
 - You have rich tools for:
   * getStudyCurriculum, updateStudyCurriculum, advanceStudyStep, recordStudyNote: Study syllabus, where we left off, and tomorrow's lesson
   * storeMemory, recallMemory, listMemories, forgetMemory: Persistent long-term memory archive
   * verifyCommander: Checks voiceprint authorization and Level 5 clearance
   * playMedia: Immediately opens and plays YouTube videos or music in the in-app viewport
+  * createHologram: Builds a real 3D hologram (procedural geometry or user model) in the gold HologramViewer
+  * confirmHologram: Confirms paid vs low-poly vs cancel AFTER asking the user — never auto-spend
+  * controlHologram: Rotates, zooms, moves, resizes, spins or closes the open hologram
+  * openHologramLibrary: Opens the browsable 127-model library ("open library", "library kholo")
   * openWebsite: Opens web destinations and apps in browser and HUD
   * readUserFile, listUserFiles, searchFileContent: Inspects files uploaded from user's PC
   * getWeather: Reports live weather conditions and forecasts
@@ -256,7 +316,7 @@ const toolDeclarations: FunctionDeclaration[] = [
   },
   {
     name: 'storeMemory',
-    description: "Saves a fact, user preference, project detail, personal note, or rule into FRIDAY's persistent long-term memory archive so it is permanently remembered across sessions.",
+    description: "Saves a fact, user preference, project detail, personal note, or rule into JARVIS's persistent long-term memory archive so it is permanently remembered across sessions.",
     parameters: {
       type: Type.OBJECT,
       properties: {
@@ -284,7 +344,7 @@ const toolDeclarations: FunctionDeclaration[] = [
   },
   {
     name: 'recallMemory',
-    description: "Searches and recalls stored long-term memories from FRIDAY's permanent memory archive by topic or keyword.",
+    description: "Searches and recalls stored long-term memories from JARVIS's permanent memory archive by topic or keyword.",
     parameters: {
       type: Type.OBJECT,
       properties: {
@@ -302,7 +362,7 @@ const toolDeclarations: FunctionDeclaration[] = [
   },
   {
     name: 'listMemories',
-    description: "Retrieves all saved long-term memories from FRIDAY's memory archive.",
+    description: "Retrieves all saved long-term memories from JARVIS's memory archive.",
     parameters: {
       type: Type.OBJECT,
       properties: {
@@ -315,7 +375,7 @@ const toolDeclarations: FunctionDeclaration[] = [
   },
   {
     name: 'forgetMemory',
-    description: "Removes or deletes a specific memory from FRIDAY's long-term memory bank.",
+    description: "Removes or deletes a specific memory from JARVIS's long-term memory bank.",
     parameters: {
       type: Type.OBJECT,
       properties: {
@@ -329,7 +389,7 @@ const toolDeclarations: FunctionDeclaration[] = [
   },
   {
     name: 'verifyCommander',
-    description: "Verifies the speaker's voiceprint, Commander clearance level, and confirms that ONLY the authorized commander can talk to FRIDAY.",
+    description: "Verifies the speaker's voiceprint, Commander clearance level, and confirms that ONLY the authorized commander can talk to JARVIS.",
     parameters: {
       type: Type.OBJECT,
       properties: {},
@@ -337,7 +397,7 @@ const toolDeclarations: FunctionDeclaration[] = [
   },
   {
     name: 'reportEmotionalTone',
-    description: "Reports emotional sentiment and conversation tone (e.g. joyful, excited, empathetic, playful, thoughtful, alert, neutral) to adjust the glow intensity and pulse frequency of FRIDAY's Central Arc Reactor.",
+    description: "Reports emotional sentiment and conversation tone (e.g. joyful, excited, empathetic, playful, thoughtful, alert, neutral) to adjust the glow intensity and pulse frequency of JARVIS's Central Arc Reactor.",
     parameters: {
       type: Type.OBJECT,
       properties: {
@@ -422,7 +482,7 @@ const toolDeclarations: FunctionDeclaration[] = [
   },
   {
     name: 'playMedia',
-    description: 'Plays a YouTube video, music stream, or video search query directly inside the FRIDAY in-app cybernetic media player.',
+    description: 'Plays a YouTube video, music stream, or video search query directly inside the JARVIS in-app cybernetic media player.',
     parameters: {
       type: Type.OBJECT,
       properties: {
@@ -436,6 +496,80 @@ const toolDeclarations: FunctionDeclaration[] = [
         },
       },
       required: ['query'],
+    },
+  },
+  {
+    name: 'createHologram',
+    description: 'Creates a real 3D hologram in the JARVIS gold HologramViewer. Understands English, Hindi and Hinglish requests ("create a hologram of Earth", "human heart ka 3D hologram banao", "Earth ka 3D model dikhao"). Only call when the user asks for a hologram/3D model — never for normal conversation.',
+    parameters: {
+      type: Type.OBJECT,
+      properties: {
+        object: {
+          type: Type.STRING,
+          description: 'The object to hologram (e.g. "Earth", "human heart", "car", "cube"). Use the user\'s words.',
+        },
+        quality: {
+          type: Type.STRING,
+          description: 'Quality route: "low" when the user says low-poly/cheap/free version, otherwise omit',
+          enum: ['auto', 'low', 'high'],
+        },
+      },
+      required: ['object'],
+    },
+  },
+  {
+    name: 'confirmHologram',
+    description: 'Confirms the pending paid/low-poly/approx hologram choice. choice "paid" ONLY after the user explicitly said yes/confirm/use paid generation. "lowpoly" for the free low-detail route ("low poly", "cheap version", "free version", "don\'t spend"). "approx" when the user accepts an approximation ("haan dikhao", "yes show"). "cancel" to abort.',
+    parameters: {
+      type: Type.OBJECT,
+      properties: {
+        choice: {
+          type: Type.STRING,
+          description: 'User choice',
+          enum: ['paid', 'lowpoly', 'approx', 'cancel'],
+        },
+        object: {
+          type: Type.STRING,
+          description: 'The object from the original request',
+        },
+      },
+      required: ['choice', 'object'],
+    },
+  },
+  {
+    name: 'openHologramLibrary',
+    description: 'Opens the searchable offline hologram library browser (127 models) in the HUD. Use for "open library", "library kholo", "models dikhao", "catalog dikhao", "browse holograms".',
+    parameters: { type: Type.OBJECT, properties: {} },
+  },
+  {
+    name: 'compareHolograms',
+    description: 'Displays two library models side-by-side for comparison (e.g. "heart aur brain compare karo"). Both must exist in the 127-model offline library.',
+    parameters: {
+      type: Type.OBJECT,
+      properties: {
+        a: { type: Type.STRING, description: 'First model name' },
+        b: { type: Type.STRING, description: 'Second model name' },
+      },
+      required: ['a', 'b'],
+    },
+  },
+  {
+    name: 'controlHologram',
+    description: 'Controls the currently open hologram: rotate, zoom, move, resize, spin, reset, hide or close. Use for commands like "rotate it", "isko ghumao", "zoom in", "bada karo", "reset", "stop rotating", "hide hologram", "close kar do".',
+    parameters: {
+      type: Type.OBJECT,
+      properties: {
+        action: {
+          type: Type.STRING,
+          description: 'Control action (rotate/zoom/move/reset/spin/size/view mode/wireframe/x-ray/labels/animation/quality/sync/hide/close)',
+          enum: ['rotate_left', 'rotate_right', 'rotate_deg', 'zoom_in', 'zoom_out', 'move_up', 'move_down', 'move_left', 'move_right', 'reset', 'spin_start', 'spin_stop', 'bigger', 'smaller', 'hide', 'close', 'view_holo', 'view_solid', 'view_wire', 'view_xray', 'labels_show', 'labels_hide', 'anim_play', 'anim_pause', 'anim_restart', 'quality_low', 'quality_med', 'quality_high', 'sync_on', 'sync_off'],
+        },
+        degrees: {
+          type: Type.NUMBER,
+          description: 'Degrees for rotate_deg (e.g. 90)',
+        },
+      },
+      required: ['action'],
     },
   },
   {
@@ -467,7 +601,7 @@ const toolDeclarations: FunctionDeclaration[] = [
   },
   {
     name: 'saveNote',
-    description: 'Saves a note, memo, or reminder to FRIDAY’s scratchpad drawer.',
+    description: 'Saves a note, memo, or reminder to JARVIS’s scratchpad drawer.',
     parameters: {
       type: Type.OBJECT,
       properties: {
@@ -565,7 +699,7 @@ const toolDeclarations: FunctionDeclaration[] = [
   },
   {
     name: 'setThemeAccent',
-    description: "Changes FRIDAY's interface accent color theme (cyan, amber, emerald, violet, rose).",
+    description: "Changes JARVIS's interface accent color theme (cyan, amber, emerald, violet, rose).",
     parameters: {
       type: Type.OBJECT,
       properties: {
@@ -843,9 +977,26 @@ app.post('/api/generate-image', express.json(), async (req, res) => {
 });
 
 // Text Chat API (ChatGPT-style typed conversation)
+// Simple per-IP rate limit: 30 requests / minute (prevents runaway loops).
+const chatRate = new Map<string, { count: number; windowStart: number }>();
+function chatRateLimited(ip: string): boolean {
+  const now = Date.now();
+  const entry = chatRate.get(ip);
+  if (!entry || now - entry.windowStart > 60000) {
+    chatRate.set(ip, { count: 1, windowStart: now });
+    return false;
+  }
+  entry.count += 1;
+  return entry.count > 30;
+}
 const chatHistories = new Map<string, { role: string; text: string }[]>();
 app.post('/api/chat', express.json(), async (req, res) => {
   try {
+    const ip = (req.headers['x-forwarded-for'] as string)?.split(',')[0]?.trim() || req.ip || 'unknown';
+    if (chatRateLimited(ip)) {
+      res.status(429).json({ success: false, error: 'Rate limit: thoda ruk kar dobara try karo.' });
+      return;
+    }
     const { message, sessionId } = req.body;
     const apiKey = process.env.GEMINI_API_KEY;
     if (!apiKey) throw new Error('GEMINI_API_KEY is not configured');
@@ -861,15 +1012,18 @@ app.post('/api/chat', express.json(), async (req, res) => {
       parts: [{ text: h.text }],
     }));
 
-    const response = await ai.models.generateContent({
-      model: 'gemini-3.6-flash',
-      contents,
-      config: {
-        systemInstruction: 'You are FRIDAY, a witty, warm, confident AI assistant for Commander Enayet Hussain. Reply concisely in the same language the user writes in. Keep answers short and conversational like ChatGPT voice mode.',
-        maxOutputTokens: 500,
-        temperature: 0.8,
-      },
-    });
+    const response = await Promise.race([
+      ai.models.generateContent({
+        model: 'gemini-3.6-flash',
+        contents,
+        config: {
+          systemInstruction: 'You are FRIDAY, a witty, warm, confident AI assistant for Commander Enayet Hussain. Reply concisely in the same language the user writes in. Keep answers short and conversational like ChatGPT voice mode.',
+          maxOutputTokens: 500,
+          temperature: 0.8,
+        },
+      }),
+      new Promise<never>((_, reject) => setTimeout(() => reject(new Error('AI timeout (25s)')), 25000)),
+    ]);
 
     const reply = response.text || 'Sorry Commander, kuch gadbad ho gayi. Dobara try karo.';
     history.push({ role: 'model', text: reply });
@@ -882,7 +1036,7 @@ app.post('/api/chat', express.json(), async (req, res) => {
   }
 });
 
-// ============ FRIDAY Device Link: PC <-> Phone secure relay ============
+// ============ JARVIS Device Link: PC <-> Phone secure relay ============
 // Pairing: ek device 6-digit code banata hai, doosra code daalke pair hota hai.
 // Messages server queue me rehte hain, receiver poll karke leta hai.
 // NOTE: production me iske aage rate-limit + TLS + token expiry lagana (spec section 29).
@@ -891,8 +1045,18 @@ interface LinkedDevice {
   name: string;
   kind: string;
   token: string;
-  pairedWith: string | null;
+  pairedWith: string | null; // legacy: first pairing (kept for old clients)
   lastSeen: number;
+  // --- v2 secure identity/registry (optional until device enrolls) ---
+  pubkey?: string; // Ed25519 SPKI DER base64 (public only, always)
+  pairings?: string[]; // all paired deviceIds (multi-device)
+  perms?: Record<string, PermSet>; // perms[peerId] = what I granted THEM
+  alias?: string; // owner-defined display name
+  revoked?: boolean;
+  revokedAt?: number;
+  keyVersion?: number; // bumped on revoke -> kills access tokens
+  pairedAt?: number;
+  createdAt?: number;
 }
 interface RelayMessage {
   id: string;
@@ -907,8 +1071,8 @@ const deviceTokens = new Map<string, string>(); // token -> deviceId
 const pairingCodes = new Map<string, { deviceId: string; expires: number }>(); // code -> deviceId
 const relayInbox = new Map<string, RelayMessage[]>(); // toDeviceId -> messages
 
-// ============ FRIDAY Cloud Sync: paired devices share one state bucket ============
-// Architecture: CLOUD/BACKEND central, Android = complete FRIDAY, PC = complete FRIDAY.
+// ============ JARVIS Cloud Sync: paired devices share one state bucket ============
+// Architecture: CLOUD/BACKEND central, Android = complete JARVIS, PC = complete JARVIS.
 // Pair hone par dono ka syncRoom same banta hai -> notes/tasks/curriculum/routines dono pe same.
 // Unpaired device apna private bucket use karta hai.
 interface SyncBucket { notes: any; tasks: any; curriculum: any; routines: any; prefs: any; updatedAt: number; updatedBy: string }
@@ -945,7 +1109,7 @@ app.post('/api/devices/register', express.json(), (req, res) => {
   const token = existing?.token || randomToken();
   const dev: LinkedDevice = {
     deviceId,
-    name: (name || 'FRIDAY device').toString().slice(0, 60),
+    name: (name || 'JARVIS device').toString().slice(0, 60),
     kind: (kind || 'web').toString().slice(0, 20),
     token,
     pairedWith: existing?.pairedWith || null,
@@ -1027,8 +1191,16 @@ app.post('/api/devices/send', express.json(), (req, res) => {
     return;
   }
   const targetId = ((req.body || {}).toDeviceId || dev.pairedWith || '').toString();
+  if (dev.revoked) {
+    res.status(403).json({ success: false, error: 'DEVICE_REVOKED: re-pair required' });
+    return;
+  }
   if (!targetId || !linkedDevices.has(targetId)) {
     res.status(400).json({ success: false, error: 'Koi paired device nahi hai. Pehle pair karo.' });
+    return;
+  }
+  if (linkedDevices.get(targetId)!.revoked || isRevokedPair(dev, targetId)) {
+    res.status(403).json({ success: false, error: 'DEVICE_REVOKED or pairing removed' });
     return;
   }
   const msg: RelayMessage = {
@@ -1069,6 +1241,883 @@ app.get('/api/devices/status', (req, res) => {
     deviceId: dev.deviceId,
     paired: other ? { deviceId: other.deviceId, name: other.name, kind: other.kind, online } : null,
   });
+});
+
+// ============ JARVIS File Transfer: chunked, paired-only, receipt-verified ============
+// Sender uploads base64 chunks; receiver downloads, saves, and posts a receipt
+// with the real byte count. COMPLETE is reported only after receipt matches.
+interface FtTransfer {
+  id: string;
+  fromDeviceId: string;
+  fromName: string;
+  toDeviceId: string;
+  name: string;
+  size: number;
+  chunks: number;
+  sha256: string | null; // sender-declared content hash (null = legacy client)
+  received: Map<number, string>;
+  createdAt: number;
+  receiptSize: number | null;
+  receiptHashOk: boolean | null;
+  done: boolean;
+}
+const ftStore = new Map<string, FtTransfer>();
+const FT_MAX_BYTES = 8 * 1024 * 1024;
+const FT_TTL_MS = 20 * 60 * 1000;
+const FT_CHUNK_JSON = '256kb';
+
+function ftSweep() {
+  const now = Date.now();
+  for (const [id, t] of ftStore) {
+    if (now - t.createdAt > FT_TTL_MS) ftStore.delete(id);
+  }
+}
+
+// Begin: manifest announce (paired device only)
+app.post('/api/ft/begin', express.json(), (req, res) => {
+  const dev = deviceFromToken(req);
+  if (!dev) {
+    res.status(401).json({ success: false, error: 'Invalid token' });
+    return;
+  }
+  const targetId = ((req.body || {}).toDeviceId || dev.pairedWith || '').toString();
+  if (dev.revoked) {
+    res.status(403).json({ success: false, error: 'DEVICE_REVOKED: re-pair required' });
+    return;
+  }
+  if (!targetId || !linkedDevices.has(targetId)) {
+    res.status(400).json({ success: false, error: 'Koi paired device nahi hai. Pehle pair karo.' });
+    return;
+  }
+  const target = linkedDevices.get(targetId)!;
+  if (target.revoked || isRevokedPair(dev, targetId)) {
+    res.status(403).json({ success: false, error: 'DEVICE_REVOKED or pairing removed' });
+    return;
+  }
+  // File-transfer permission: enforced only when the receiver set explicit perms
+  // (legacy pairs without perm records keep working).
+  const recvPerms = target.perms?.[dev.deviceId];
+  if (recvPerms && !recvPerms.ft) {
+    audit(dev.deviceId, dev.name, 'FT_BEGIN', 'denied: no ft permission', targetId);
+    res.status(403).json({ success: false, error: 'PERMISSION_DENIED: receiver ne file-transfer allow nahi kiya.' });
+    return;
+  }
+  const name = ((req.body || {}).name || 'file').toString().slice(0, 120);
+  const size = Number(((req.body || {}).size) || 0);
+  const chunks = Number(((req.body || {}).chunks) || 0);
+  if (!Number.isFinite(size) || size <= 0 || size > FT_MAX_BYTES) {
+    res.status(400).json({ success: false, error: `File size 1 byte – 8 MB ke beech honi chahiye.` });
+    return;
+  }
+  if (!Number.isInteger(chunks) || chunks <= 0 || chunks > 400) {
+    res.status(400).json({ success: false, error: 'Invalid chunk count.' });
+    return;
+  }
+  ftSweep();
+  const id = `ft-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`;
+  const shaRaw = ((req.body || {}).sha256 || '').toString().toLowerCase();
+  ftStore.set(id, {
+    id, fromDeviceId: dev.deviceId, fromName: dev.name, toDeviceId: targetId,
+    name, size, chunks, sha256: /^[0-9a-f]{64}$/.test(shaRaw) ? shaRaw : null,
+    received: new Map(), createdAt: Date.now(), receiptSize: null, receiptHashOk: null, done: false,
+  });
+  audit(dev.deviceId, dev.name, 'FT_BEGIN', `ok ${name} ${size}B`, targetId);
+  res.json({ success: true, id, to: targetId });
+});
+
+// Upload one chunk
+app.post('/api/ft/chunk', express.json({ limit: FT_CHUNK_JSON }), (req, res) => {
+  const dev = deviceFromToken(req);
+  if (!dev) {
+    res.status(401).json({ success: false, error: 'Invalid token' });
+    return;
+  }
+  const t = ftStore.get(((req.body || {}).id || '').toString());
+  if (!t || t.fromDeviceId !== dev.deviceId || t.done) {
+    res.status(404).json({ success: false, error: 'Transfer nahi mila ya poora ho chuka.' });
+    return;
+  }
+  const idx = Number(((req.body || {}).idx));
+  const data = ((req.body || {}).data || '').toString();
+  if (!Number.isInteger(idx) || idx < 0 || idx >= t.chunks || !data || data.length > 200000) {
+    res.status(400).json({ success: false, error: 'Invalid chunk.' });
+    return;
+  }
+  t.received.set(idx, data);
+  res.json({ success: true, received: t.received.size, chunks: t.chunks });
+});
+
+// ---------- Universal 3D Hologram Generator API ----------
+const HOLO_MAX_BYTES = 25 * 1024 * 1024;
+const HOLO_ALLOWED = new Set(['glb', 'gltf', 'obj']);
+
+function holoDir(): string {
+  // dev serves public/, production serves dist/ — store where it is served from.
+  const d = process.env.NODE_ENV === 'production'
+    ? path.join(process.cwd(), 'dist', 'holograms')
+    : path.join(process.cwd(), 'public', 'holograms');
+  try { fs.mkdirSync(d, { recursive: true }); } catch { /* read-only fs */ }
+  return d;
+}
+
+function holoSafeName(name: string, ext: string): string | null {
+  const base = (name || '').split(/[\\/]/).pop()!.replace(/\.[^.]*$/, '').replace(/[^a-zA-Z0-9-_ ]/g, '').trim().slice(0, 60);
+  if (!base) return null;
+  return `${base}-${Date.now().toString(36)}.${ext}`;
+}
+
+// Registry of server-side models actually on disk (LEVEL 1). No invented entries.
+app.get('/api/hologram/models', (_req, res) => {
+  try {
+    const d = holoDir();
+    const files = fs.existsSync(d) ? fs.readdirSync(d) : [];
+    const models = files
+      .filter((f) => HOLO_ALLOWED.has(f.split('.').pop()!.toLowerCase()))
+      .map((f) => {
+        const st = fs.statSync(path.join(d, f));
+        return { name: f, url: `/holograms/${encodeURIComponent(f)}`, format: f.split('.').pop()!.toLowerCase(), size: st.size };
+      });
+    res.json({ success: true, models });
+  } catch (e) {
+    res.status(500).json({ success: false, error: e instanceof Error ? e.message : 'Registry read failed' });
+  }
+});
+
+// Provider capabilities (PART W). No secrets, prices only if a provider states one.
+app.get('/api/hologram/providers', (_req, res) => {
+  const providers = [
+    { provider_name: 'local', free_available: true, estimated_cost: null, supports_text_to_3d: false, supports_image_to_3d: false, supports_low_poly: false, model_formats: ['glb', 'gltf', 'obj'], paid: false },
+    { provider_name: 'procedural', free_available: true, estimated_cost: null, supports_text_to_3d: true, supports_image_to_3d: false, supports_low_poly: true, model_formats: ['procedural'], paid: false },
+  ];
+  if ((process.env.HOLOGRAM_API_URL || '') && (process.env.HOLOGRAM_API_KEY || '')) {
+    providers.push({ provider_name: 'external-3d', free_available: false, estimated_cost: null, supports_text_to_3d: true, supports_image_to_3d: false, supports_low_poly: false, model_formats: ['glb'], paid: true });
+  }
+  res.json({ success: true, providers });
+});
+
+// User model upload: extension + size + magic-byte validation, sanitized name.
+// Same-device upload (user's own file from their own browser) — no device pairing needed.
+app.post('/api/hologram/upload', express.json({ limit: '40mb' }), (req, res) => {
+  try {
+    const rawName = ((req.body || {}).name || '').toString();
+    const b64 = ((req.body || {}).dataBase64 || '').toString();
+    const ext = rawName.split('.').pop()!.toLowerCase();
+    if (!HOLO_ALLOWED.has(ext)) {
+      res.status(400).json({ success: false, error: 'Only .glb, .gltf or .obj models are accepted.' });
+      return;
+    }
+    let buf: Buffer;
+    try {
+      buf = Buffer.from(b64, 'base64');
+    } catch {
+      res.status(400).json({ success: false, error: 'Corrupt upload payload.' });
+      return;
+    }
+    if (buf.length === 0 || buf.length > HOLO_MAX_BYTES) {
+      res.status(400).json({ success: false, error: 'File must be 1 byte – 25 MB.' });
+      return;
+    }
+    // magic-byte / structure validation — never trust the extension alone
+    if (ext === 'glb' && buf.subarray(0, 4).toString('ascii') !== 'glTF') {
+      res.status(400).json({ success: false, error: 'Not a valid GLB file (bad magic bytes).' });
+      return;
+    }
+    if (ext === 'gltf') {
+      try {
+        const j = JSON.parse(buf.toString('utf8'));
+        if (!j || typeof j !== 'object' || !j.asset) throw new Error('bad');
+      } catch {
+        res.status(400).json({ success: false, error: 'Not a valid glTF JSON file.' });
+        return;
+      }
+    }
+    if (ext === 'obj') {
+      const head = buf.subarray(0, 4096).toString('utf8');
+      if (!/^\s*(v\s|o\s|g\s|#)/m.test(head)) {
+        res.status(400).json({ success: false, error: 'Not a valid OBJ file.' });
+        return;
+      }
+    }
+    const safe = holoSafeName(rawName, ext);
+    if (!safe) {
+      res.status(400).json({ success: false, error: 'Unusable file name.' });
+      return;
+    }
+    fs.writeFileSync(path.join(holoDir(), safe), buf);
+    const sha256 = nodeCrypto.createHash('sha256').update(buf).digest('hex');
+    res.json({ success: true, url: `/holograms/${encodeURIComponent(safe)}`, format: ext, size: buf.length, sha256 });
+  } catch (e) {
+    res.status(500).json({ success: false, error: e instanceof Error ? e.message : 'Upload failed' });
+  }
+});
+
+// Optional external 3D-generation service (LEVEL 3). Honest when unconfigured:
+// keys live in env, never hardcoded; frontend only renders on success === true.
+app.post('/api/hologram/create', express.json(), async (req, res) => {
+  const object = ((req.body || {}).object || '').toString().trim();
+  if (!object) {
+    res.status(400).json({ success: false, error: 'Missing object.' });
+    return;
+  }
+  const apiUrl = process.env.HOLOGRAM_API_URL || '';
+  const apiKey = process.env.HOLOGRAM_API_KEY || '';
+  if (!apiUrl || !apiKey) {
+    res.json({ success: false, error: '3D model generation unavailable' });
+    return;
+  }
+  try {
+    const ctrl = new AbortController();
+    const t = setTimeout(() => ctrl.abort(), 90000);
+    try {
+      const r = await fetch(apiUrl, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${apiKey}` },
+        body: JSON.stringify({ object, style: 'hologram' }),
+        signal: ctrl.signal,
+      });
+      const j = await r.json().catch(() => null);
+      if (!r.ok || !j || j.success !== true || typeof j.model_url !== 'string') {
+        res.status(502).json({ success: false, error: '3D model generation unavailable' });
+        return;
+      }
+      res.json({ success: true, model_url: j.model_url, model_type: j.model_type || 'glb', quality: ((req.body || {}).quality || 'high').toString(), provider: 'external-3d' });
+    } finally {
+      clearTimeout(t);
+    }
+  } catch {
+    res.status(502).json({ success: false, error: '3D model generation unavailable' });
+  }
+});
+
+// Receiver: pending manifests (sirf mujhe bheje gaye, incomplete)
+app.get('/api/ft/inbox', (req, res) => {
+  const dev = deviceFromToken(req as any);
+  if (!dev) {
+    res.status(401).json({ success: false, error: 'Invalid token' });
+    return;
+  }
+  ftSweep();
+  const list: Array<Record<string, unknown>> = [];
+  for (const t of ftStore.values()) {
+    if (t.toDeviceId === dev.deviceId && !t.done) {
+      list.push({ id: t.id, name: t.name, size: t.size, chunks: t.chunks, received: t.received.size, fromName: t.fromName, createdAt: t.createdAt, sha256: t.sha256 });
+    }
+  }
+  res.json({ success: true, transfers: list });
+});
+
+// Receiver: download one chunk
+app.get('/api/ft/chunk', (req, res) => {
+  const dev = deviceFromToken(req as any);
+  if (!dev) {
+    res.status(401).json({ success: false, error: 'Invalid token' });
+    return;
+  }
+  const t = ftStore.get((req.query.id || '').toString());
+  if (!t || t.toDeviceId !== dev.deviceId) {
+    res.status(404).json({ success: false, error: 'Transfer nahi mila.' });
+    return;
+  }
+  const idx = Number(req.query.idx);
+  const data = t.received.get(idx);
+  if (data === undefined) {
+    res.status(404).json({ success: false, error: 'Chunk abhi upload nahi hua.' });
+    return;
+  }
+  res.json({ success: true, idx, data, chunks: t.chunks, size: t.size, name: t.name });
+});
+
+// Receiver: confirm save with REAL byte count; sender verifies against manifest
+app.post('/api/ft/receipt', express.json(), (req, res) => {
+  const dev = deviceFromToken(req);
+  if (!dev) {
+    res.status(401).json({ success: false, error: 'Invalid token' });
+    return;
+  }
+  const t = ftStore.get(((req.body || {}).id || '').toString());
+  if (!t || t.toDeviceId !== dev.deviceId) {
+    res.status(404).json({ success: false, error: 'Transfer nahi mila.' });
+    return;
+  }
+  t.receiptSize = Number(((req.body || {}).receivedSize) || -1);
+  t.receiptHashOk = ((req.body || {}).hashOk) === true;
+  t.done = true;
+  audit(dev.deviceId, dev.name, 'FT_RECEIPT', `size=${t.receiptSize} hashOk=${t.receiptHashOk}`, t.fromDeviceId);
+  res.json({ success: true });
+});
+
+// Sender: poll receipt (COMPLETE only when receiver-confirmed bytes match)
+app.get('/api/ft/receipt', (req, res) => {
+  const dev = deviceFromToken(req as any);
+  if (!dev) {
+    res.status(401).json({ success: false, error: 'Invalid token' });
+    return;
+  }
+  const t = ftStore.get((req.query.id || '').toString());
+  if (!t || t.fromDeviceId !== dev.deviceId) {
+    res.status(404).json({ success: false, error: 'Transfer nahi mila.' });
+    return;
+  }
+  // COMPLETE only on receiver-confirmed bytes (+ hash when the manifest declared one).
+  const sizeOk = t.done && t.receiptSize === t.size;
+  const complete = t.sha256 ? (sizeOk && t.receiptHashOk === true) : sizeOk;
+  res.json({ success: true, complete, receivedChunks: t.received.size, chunks: t.chunks, receiptSize: t.receiptSize, size: t.size, hashOk: t.receiptHashOk, wantsHash: !!t.sha256 });
+});
+
+// ============ FRIDAY Share: PC "Send with FRIDAY" staging ============
+// The Windows context-menu helper runs ON THE PC and stages a LOCAL file path
+// so the HUD Share panel (same PC browser/Electron) can pick the file up and
+// send it through the normal verified ft flow. The server never reads the
+// file into the response — it only validates existence/type/size and returns
+// metadata. Token-auth required; absolute local paths only (no traversal:
+// statSync must resolve to a real file, directories and specials rejected).
+interface StagedShareFile { name: string; size: number; stagedAt: number; byDevice: string; byName: string }
+const stagedShareFiles = new Map<string, StagedShareFile[]>(); // deviceId -> staged
+const STAGE_MAX_BYTES = 64 * 1024 * 1024;
+app.post('/api/share/stage', express.json(), (req, res) => {
+  const dev = deviceFromToken(req);
+  if (!dev) {
+    res.status(401).json({ success: false, error: 'Invalid token' });
+    return;
+  }
+  const rawPath = ((req.body || {}).path || '').toString();
+  if (!rawPath || rawPath.length > 1024 || /[\0-\x1f]/.test(rawPath)) {
+    res.status(400).json({ success: false, error: 'Invalid path.' });
+    return;
+  }
+  let resolved: string;
+  try {
+    resolved = path.resolve(rawPath);
+  } catch {
+    res.status(400).json({ success: false, error: 'Invalid path.' });
+    return;
+  }
+  let st: fs.Stats;
+  try {
+    st = fs.statSync(resolved);
+  } catch {
+    res.status(404).json({ success: false, error: 'File nahi mili.' });
+    return;
+  }
+  if (!st.isFile()) {
+    res.status(400).json({ success: false, error: 'Sirf files stage hoti hain (folder nahi).' });
+    return;
+  }
+  if (st.size <= 0 || st.size > STAGE_MAX_BYTES) {
+    res.status(400).json({ success: false, error: 'File 1 byte – 64 MB ke beech honi chahiye.' });
+    return;
+  }
+  const name = path.basename(resolved).slice(0, 120);
+  const list = stagedShareFiles.get(dev.deviceId) || [];
+  list.unshift({ name, size: st.size, stagedAt: Date.now(), byDevice: dev.deviceId, byName: dev.name });
+  stagedShareFiles.set(dev.deviceId, list.slice(0, 20));
+  audit(dev.deviceId, dev.name, 'SHARE_STAGE', `name=${name} size=${st.size}`, null);
+  res.json({ success: true, staged: { name, size: st.size } });
+});
+
+// HUD pickup: staged local files for THIS device (browser reads the file itself).
+app.get('/api/share/staged', (req, res) => {
+  const dev = deviceFromToken(req as any);
+  if (!dev) {
+    res.status(401).json({ success: false, error: 'Invalid token' });
+    return;
+  }
+  const list = (stagedShareFiles.get(dev.deviceId) || []).filter((s) => Date.now() - s.stagedAt < 30 * 60 * 1000);
+  stagedShareFiles.set(dev.deviceId, list);
+  res.json({ success: true, staged: list });
+});
+
+// ============ JARVIS Secure Device Pairing v2 (Ed25519 identity + signed auth) ============
+// Trust model: every installation owns an Ed25519 keypair. The server NEVER sees
+// private keys. Pairing needs physical/owner approval on BOTH sides (host shows
+// code+QR, guest joins, host explicitly ALLOWs). Sensitive calls are signed per
+// request (timestamp+nonce -> replay protection) and use short-lived access tokens.
+import nodeCrypto from 'node:crypto';
+
+interface PermSet { basic: boolean; ft: boolean; cmd: boolean; notify: boolean; screen: boolean; }
+const DEFAULT_GUEST_PERMS: PermSet = { basic: true, ft: true, cmd: false, notify: true, screen: false };
+function cleanPerms(p: unknown): PermSet {
+  const o = (p && typeof p === 'object' ? p : {}) as Partial<PermSet>;
+  return { basic: true, ft: !!o.ft, cmd: !!o.cmd, notify: o.notify !== false, screen: !!o.screen };
+}
+interface PairSession {
+  id: string; code: string; hostId: string; hostName: string;
+  createdAt: number; expiresAt: number;
+  guestId: string | null; guestName: string | null; guestPubkey: string | null;
+  decided: 'pending' | 'allowed' | 'denied';
+  guestPerms: PermSet;
+  attempts: number; // wrong-code throttle
+}
+const pairSessions = new Map<string, PairSession>();
+const PAIR_TTL_MS = 5 * 60 * 1000;
+const ACCESS_TTL_MS = 15 * 60 * 1000;
+const NONCE_TTL_MS = 10 * 60 * 1000;
+const TS_SKEW_MS = 5 * 60 * 1000;
+
+interface AccessToken { token: string; deviceId: string; exp: number; kv: number; }
+const accessTokens = new Map<string, AccessToken>();
+const usedNonces = new Map<string, number>(); // nonce -> exp
+const authNonces = new Map<string, { deviceId: string; exp: number }>();
+const rateHits = new Map<string, { n: number; win: number }>();
+
+interface AuditEntry { t: number; actor: string; actorName: string; action: string; target?: string; result: string; }
+const auditLog: AuditEntry[] = [];
+function audit(actor: string, actorName: string, action: string, result: string, target?: string) {
+  auditLog.push({ t: Date.now(), actor, actorName, action, target, result });
+  if (auditLog.length > 500) auditLog.splice(0, auditLog.length - 500);
+}
+function sweepV2() {
+  const now = Date.now();
+  for (const [id, s] of pairSessions) if (s.expiresAt < now && s.decided === 'pending') pairSessions.delete(id);
+  for (const [t, a] of accessTokens) if (a.exp < now) accessTokens.delete(t);
+  for (const [n, e] of usedNonces) if (e < now) usedNonces.delete(n);
+  for (const [n, v] of authNonces) if (v.exp < now) authNonces.delete(n);
+  for (const [k, v] of rateHits) if (v.win < now) rateHits.delete(k);
+}
+function b64ToBuf(b64: string): Buffer {
+  return Buffer.from(b64.replace(/-/g, '+').replace(/_/g, '/'), 'base64');
+}
+function importDevicePubkey(spkiB64: string): nodeCrypto.KeyObject {
+  const der = b64ToBuf(spkiB64);
+  return nodeCrypto.createPublicKey({ key: der, format: 'der', type: 'spki' });
+}
+function verifyEd(sigB64: string, msg: string, pubkey: nodeCrypto.KeyObject): boolean {
+  try {
+    return nodeCrypto.verify(null, Buffer.from(msg, 'utf8'), pubkey, b64ToBuf(sigB64));
+  } catch { return false; }
+}
+function sha256Hex(s: string): string {
+  return nodeCrypto.createHash('sha256').update(s, 'utf8').digest('hex');
+}
+function checkRate(deviceId: string): boolean {
+  const now = Date.now();
+  const win = 60 * 1000;
+  const cur = rateHits.get(deviceId);
+  if (!cur || cur.win < now) { rateHits.set(deviceId, { n: 1, win: now + win }); return true; }
+  cur.n++;
+  return cur.n <= 120;
+}
+/** Signed-request gate for v2 sensitive endpoints. Returns device or sends 401/403. */
+function v2Gate(req: any, res: any): (LinkedDevice & { __v2ok: true }) | null {
+  sweepV2();
+  const id = (req.headers['x-dev-id'] || '').toString();
+  const ts = Number(req.headers['x-ts'] || 0);
+  const nonce = (req.headers['x-nonce'] || '').toString();
+  const sig = (req.headers['x-sig'] || '').toString();
+  const bearer = (req.headers['authorization'] || '').toString().replace(/^Bearer\s+/i, '');
+  if (!id || !ts || !nonce || !sig || !bearer) {
+    res.status(401).json({ success: false, error: 'AUTHENTICATION_FAILED: signed request required' });
+    return null;
+  }
+  if (Math.abs(Date.now() - ts) > TS_SKEW_MS) {
+    res.status(401).json({ success: false, error: 'AUTHENTICATION_FAILED: stale timestamp (replay guard)' });
+    return null;
+  }
+  const at = accessTokens.get(bearer);
+  if (!at || at.exp < Date.now() || at.deviceId !== id) {
+    const claimed = linkedDevices.get(id);
+    if (claimed?.revoked) {
+      res.status(403).json({ success: false, error: 'DEVICE_REVOKED' });
+      return null;
+    }
+    res.status(401).json({ success: false, error: 'INVALID_TOKEN: access expired, re-authenticate' });
+    return null;
+  }
+  const dev = linkedDevices.get(id);
+  if (!dev || dev.revoked || (dev.keyVersion || 0) !== at.kv) {
+    res.status(403).json({ success: false, error: 'DEVICE_REVOKED' });
+    return null;
+  }
+  if (!dev.pubkey) {
+    res.status(401).json({ success: false, error: 'AUTHENTICATION_FAILED: no identity key registered' });
+    return null;
+  }
+  if (usedNonces.has(nonce)) {
+    res.status(401).json({ success: false, error: 'AUTHENTICATION_FAILED: replayed request' });
+    return null;
+  }
+  if (!checkRate(id)) {
+    res.status(429).json({ success: false, error: 'NETWORK_ERROR: rate limited, slow down' });
+    return null;
+  }
+  const bodyStr = req.method === 'GET' || req.method === 'DELETE' ? '' : JSON.stringify(req.body || {});
+  const path = (req.path || req.url || '').split('?')[0];
+  const msg = `v1|${ts}|${nonce}|${req.method}|${path}|${sha256Hex(bodyStr)}`;
+  let pub: nodeCrypto.KeyObject;
+  try { pub = importDevicePubkey(dev.pubkey); } catch {
+    res.status(401).json({ success: false, error: 'AUTHENTICATION_FAILED: bad identity key' });
+    return null;
+  }
+  if (!verifyEd(sig, msg, pub)) {
+    res.status(401).json({ success: false, error: 'AUTHENTICATION_FAILED: bad signature' });
+    return null;
+  }
+  usedNonces.set(nonce, Date.now() + NONCE_TTL_MS);
+  dev.lastSeen = Date.now();
+  return dev as LinkedDevice & { __v2ok: true };
+}
+function pairingOf(a: LinkedDevice, bId: string): boolean {
+  if ((a.pairings || []).includes(bId)) return true;
+  // Legacy v1 code-pairing (pairedWith) counts as a valid pairing until
+  // revoked/unpaired. Without this, v1-paired devices were wrongly treated
+  // as revoked and every ft/send call failed.
+  return a.pairedWith === bId;
+}
+function isRevokedPair(a: LinkedDevice, bId: string): boolean {
+  const b = linkedDevices.get(bId);
+  if (!b) return true;
+  if (a.revoked || b.revoked) return true;
+  return !pairingOf(a, bId) || !pairingOf(b, a.deviceId);
+}
+function pubDevice(d: LinkedDevice, selfId: string) {
+  const other = selfId;
+  void other;
+  return {
+    deviceId: d.deviceId, name: d.alias || d.name, kind: d.kind,
+    online: Date.now() - d.lastSeen < 60000,
+    pairedAt: d.pairedAt || null, lastSeen: d.lastSeen,
+    revoked: !!d.revoked, hasIdentity: !!d.pubkey,
+  };
+}
+
+// Identity: upload/rotate this installation's PUBLIC key (private key never leaves device)
+app.post('/api/v2/identity', express.json(), (req, res) => {
+  const dev = deviceFromToken(req);
+  if (!dev) {
+    res.status(401).json({ success: false, error: 'Invalid token' });
+    return;
+  }
+  const { deviceId, name, kind, pubkey } = req.body || {};
+  if (deviceId && deviceId !== dev.deviceId) {
+    res.status(400).json({ success: false, error: 'deviceId mismatch' });
+    return;
+  }
+  if (pubkey) {
+    const s = pubkey.toString();
+    if (!/^[A-Za-z0-9+/=_-]{40,200}$/.test(s)) {
+      res.status(400).json({ success: false, error: 'Invalid public key format' });
+      return;
+    }
+    try { importDevicePubkey(s); } catch {
+      res.status(400).json({ success: false, error: 'Unparsable Ed25519 key' });
+      return;
+    }
+    dev.pubkey = s;
+  }
+  if (name) dev.name = name.toString().slice(0, 60);
+  if (kind) dev.kind = kind.toString().slice(0, 20);
+  if (!dev.createdAt) dev.createdAt = Date.now();
+  if (!dev.pairings) dev.pairings = [];
+  if (!dev.perms) dev.perms = {};
+  audit(dev.deviceId, dev.name, 'IDENTITY_REGISTER', 'ok');
+  res.json({ success: true, deviceId: dev.deviceId, serverTime: Date.now() });
+});
+
+// Pairing: host begins (5-min session + 6-digit code; QR payload built client-side)
+app.post('/api/v2/pair/begin', express.json(), (req, res) => {
+  const dev = deviceFromToken(req);
+  if (!dev) {
+    res.status(401).json({ success: false, error: 'Invalid token' });
+    return;
+  }
+  sweepV2();
+  const id = `ps-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`;
+  const code = String(Math.floor(100000 + Math.random() * 900000));
+  pairSessions.set(id, {
+    id, code, hostId: dev.deviceId, hostName: dev.alias || dev.name,
+    createdAt: Date.now(), expiresAt: Date.now() + PAIR_TTL_MS,
+    guestId: null, guestName: null, guestPubkey: null, decided: 'pending',
+    guestPerms: DEFAULT_GUEST_PERMS, attempts: 0,
+  });
+  audit(dev.deviceId, dev.name, 'PAIR_BEGIN', 'ok', id);
+  res.json({ success: true, sessionId: id, code, expiresAt: Date.now() + PAIR_TTL_MS });
+});
+
+// Pairing: guest joins with code (+own identity). Still NOT paired until host ALLOWs.
+app.post('/api/v2/pair/join', express.json(), (req, res) => {
+  const dev = deviceFromToken(req);
+  if (!dev) {
+    res.status(401).json({ success: false, error: 'Invalid token' });
+    return;
+  }
+  sweepV2();
+  const { sessionId, code, pubkey } = req.body || {};
+  const s = pairSessions.get((sessionId || '').toString());
+  if (!s || s.decided !== 'pending') {
+    res.status(400).json({ success: false, error: 'PAIRING_EXPIRED: session invalid or already decided' });
+    return;
+  }
+  if (Date.now() > s.expiresAt) {
+    pairSessions.delete(s.id);
+    res.status(400).json({ success: false, error: 'PAIRING_EXPIRED' });
+    return;
+  }
+  if (s.hostId === dev.deviceId) {
+    res.status(400).json({ success: false, error: 'Apne hi session me join nahi ho sakta.' });
+    return;
+  }
+  if (s.code !== (code || '').toString().trim() || !pubkey) {
+    s.attempts++;
+    if (s.attempts >= 5) {
+      pairSessions.delete(s.id);
+      audit(dev.deviceId, dev.name, 'PAIR_JOIN', 'denied: too many wrong codes, session killed', s.id);
+      res.status(429).json({ success: false, error: 'PAIRING_DENIED: too many wrong attempts, session killed. Naya QR banao.' });
+      return;
+    }
+    audit(dev.deviceId, dev.name, 'PAIR_JOIN', 'denied: bad code', s.id);
+    res.status(400).json({ success: false, error: 'PAIRING_DENIED: code galat hai' });
+    return;
+  }
+  try { importDevicePubkey(pubkey.toString()); } catch {
+    res.status(400).json({ success: false, error: 'Unparsable Ed25519 key' });
+    return;
+  }
+  dev.pubkey = pubkey.toString();
+  s.guestId = dev.deviceId;
+  s.guestName = dev.alias || dev.name;
+  s.guestPubkey = dev.pubkey;
+  audit(dev.deviceId, dev.name, 'PAIR_JOIN', 'pending-approval', s.id);
+  res.json({ success: true, pending: true, hostName: s.hostName, message: 'Host ke ALLOW ka wait karo.' });
+});
+
+// Pairing: host polls for guest arrival / expiry
+app.get('/api/v2/pair/poll', (req, res) => {
+  const dev = deviceFromToken(req as any);
+  if (!dev) {
+    res.status(401).json({ success: false, error: 'Invalid token' });
+    return;
+  }
+  const s = pairSessions.get(((req.query as any).sessionId || '').toString());
+  if (!s || s.hostId !== dev.deviceId) {
+    res.status(404).json({ success: false, error: 'Session nahi mila.' });
+    return;
+  }
+  if (s.decided !== 'pending' || Date.now() > s.expiresAt) {
+    const st = s.decided !== 'pending' ? s.decided : 'expired';
+    if (s.decided === 'pending') pairSessions.delete(s.id);
+    res.json({ success: true, state: st });
+    return;
+  }
+  res.json({
+    success: true, state: 'pending',
+    guest: s.guestId ? { deviceId: s.guestId, name: s.guestName } : null,
+    expiresAt: s.expiresAt,
+  });
+});
+
+// Pairing: host ALLOW (with explicit permission set) or DENY
+app.post('/api/v2/pair/decide', express.json(), (req, res) => {
+  const dev = deviceFromToken(req);
+  if (!dev) {
+    res.status(401).json({ success: false, error: 'Invalid token' });
+    return;
+  }
+  const { sessionId, approve, perms } = req.body || {};
+  const s = pairSessions.get((sessionId || '').toString());
+  if (!s || s.hostId !== dev.deviceId || s.decided !== 'pending') {
+    res.status(400).json({ success: false, error: 'PAIRING_EXPIRED: session invalid' });
+    return;
+  }
+  if (Date.now() > s.expiresAt) {
+    pairSessions.delete(s.id);
+    res.status(400).json({ success: false, error: 'PAIRING_EXPIRED' });
+    return;
+  }
+  if (!approve) {
+    s.decided = 'denied';
+    audit(dev.deviceId, dev.name, 'PAIR_DENY', 'ok', s.guestId || undefined);
+    res.json({ success: true, decided: 'denied' });
+    return;
+  }
+  if (!s.guestId) {
+    res.status(400).json({ success: false, error: 'Abhi koi guest aaya nahi.' });
+    return;
+  }
+  const guest = linkedDevices.get(s.guestId);
+  if (!guest) {
+    res.status(400).json({ success: false, error: 'Guest device nahi mila.' });
+    return;
+  }
+  const gp = cleanPerms(perms);
+  const now = Date.now();
+  for (const d of [dev, guest]) {
+    if (!d.pairings) d.pairings = [];
+    if (!d.perms) d.perms = {};
+  }
+  if (!dev.pairings!.includes(guest.deviceId)) dev.pairings!.push(guest.deviceId);
+  if (!guest.pairings!.includes(dev.deviceId)) guest.pairings!.push(dev.deviceId);
+  // Owner (host) approves what the GUEST may do -> recorded as HOST's grant to guest.
+  // Guest side gets a sane default the guest owner can change later.
+  dev.perms![guest.deviceId] = gp;
+  guest.perms![dev.deviceId] = guest.perms![dev.deviceId] || { basic: true, ft: true, cmd: false, notify: true, screen: false };
+  dev.pairedWith = dev.pairedWith || guest.deviceId; // legacy compat: first pairing
+  guest.pairedWith = guest.pairedWith || dev.deviceId;
+  (dev as LinkedDevice).pairedAt = (dev as LinkedDevice).pairedAt || now;
+  (guest as LinkedDevice).pairedAt = (guest as LinkedDevice).pairedAt || now;
+  s.decided = 'allowed';
+  audit(dev.deviceId, dev.name, 'PAIR_ALLOW', `ok perms=${JSON.stringify(gp)}`, guest.deviceId);
+  res.json({ success: true, decided: 'allowed', guest: { deviceId: guest.deviceId, name: guest.alias || guest.name } });
+});
+
+// Pairing: guest polls own result (allowed/denied/expired/waiting)
+app.get('/api/v2/pair/result', (req, res) => {
+  const dev = deviceFromToken(req as any);
+  if (!dev) {
+    res.status(401).json({ success: false, error: 'Invalid token' });
+    return;
+  }
+  const s = pairSessions.get(((req.query as any).sessionId || '').toString());
+  if (!s || s.guestId !== dev.deviceId) {
+    res.status(404).json({ success: false, error: 'Session nahi mila.' });
+    return;
+  }
+  if (s.decided === 'pending' && Date.now() > s.expiresAt) {
+    pairSessions.delete(s.id);
+    res.json({ success: true, state: 'expired' });
+    return;
+  }
+  if (s.decided === 'allowed') {
+    res.json({ success: true, state: 'allowed', host: { deviceId: s.hostId, name: s.hostName }, perms: dev.perms?.[s.hostId] || null });
+    return;
+  }
+  res.json({ success: true, state: s.decided === 'denied' ? 'denied' : 'waiting' });
+});
+
+// Auth: challenge nonce (public; proves nothing by itself)
+app.post('/api/v2/auth/nonce', express.json(), (req, res) => {
+  const { deviceId } = req.body || {};
+  const dev = linkedDevices.get((deviceId || '').toString());
+  if (!dev || dev.revoked || !dev.pubkey) {
+    res.status(400).json({ success: false, error: 'AUTHENTICATION_FAILED: unknown/revoked device' });
+    return;
+  }
+  sweepV2();
+  const nonce = `n-${Date.now().toString(36)}-${nodeCrypto.randomBytes(12).toString('hex')}`;
+  authNonces.set(nonce, { deviceId: dev.deviceId, exp: Date.now() + 2 * 60 * 1000 });
+  res.json({ success: true, nonce, serverTime: Date.now() });
+});
+
+// Auth: verify signature over `auth|nonce|ts|deviceId` -> short-lived access token
+app.post('/api/v2/auth/verify', express.json(), (req, res) => {
+  sweepV2();
+  const { deviceId, nonce, ts, signature } = req.body || {};
+  const dev = linkedDevices.get((deviceId || '').toString());
+  const chal = authNonces.get((nonce || '').toString());
+  if (!dev || dev.revoked || !dev.pubkey || !chal || chal.deviceId !== dev.deviceId) {
+    res.status(401).json({ success: false, error: 'AUTHENTICATION_FAILED' });
+    return;
+  }
+  authNonces.delete(nonce.toString());
+  if (Math.abs(Date.now() - Number(ts)) > TS_SKEW_MS) {
+    res.status(401).json({ success: false, error: 'AUTHENTICATION_FAILED: stale timestamp' });
+    return;
+  }
+  let pub: nodeCrypto.KeyObject;
+  try { pub = importDevicePubkey(dev.pubkey); } catch {
+    res.status(401).json({ success: false, error: 'AUTHENTICATION_FAILED' });
+    return;
+  }
+  if (!verifyEd((signature || '').toString(), `auth|${nonce}|${ts}|${deviceId}`, pub)) {
+    audit(dev.deviceId, dev.name, 'AUTH_VERIFY', 'denied: bad signature');
+    res.status(401).json({ success: false, error: 'AUTHENTICATION_FAILED: bad signature' });
+    return;
+  }
+  const token = `at_${nodeCrypto.randomBytes(24).toString('hex')}`;
+  accessTokens.set(token, { token, deviceId: dev.deviceId, exp: Date.now() + ACCESS_TTL_MS, kv: dev.keyVersion || 0 });
+  dev.lastSeen = Date.now();
+  audit(dev.deviceId, dev.name, 'AUTH_VERIFY', 'ok');
+  res.json({ success: true, accessToken: token, expiresIn: ACCESS_TTL_MS / 1000 });
+});
+
+// Registry: my devices (self + all pairings, REAL online from lastSeen)
+app.get('/api/v2/devices', (req, res) => {
+  const dev = v2Gate(req, res);
+  if (!dev) return;
+  const list = [dev, ...(dev.pairings || []).map((id) => linkedDevices.get(id)).filter((d): d is LinkedDevice => !!d && !d.revoked)];
+  audit(dev.deviceId, dev.name, 'REGISTRY_LIST', 'ok');
+  res.json({
+    success: true,
+    self: pubDevice(dev, dev.deviceId),
+    devices: list.filter((d) => d.deviceId !== dev.deviceId).map((d) => ({
+      ...pubDevice(d, dev.deviceId),
+      myPerms: dev.perms?.[d.deviceId] || null, // what I granted them
+      theirPerms: d.perms?.[dev.deviceId] || null, // what they granted me
+    })),
+  });
+});
+
+// Registry: rename self (alias) — owner action on own box
+app.post('/api/v2/device/rename', express.json(), (req, res) => {
+  const dev = v2Gate(req, res);
+  if (!dev) return;
+  const alias = ((req.body || {}).alias || '').toString().trim().slice(0, 40);
+  if (!alias) {
+    res.status(400).json({ success: false, error: 'Alias khaali nahi ho sakta.' });
+    return;
+  }
+  dev.alias = alias;
+  audit(dev.deviceId, dev.name, 'DEVICE_RENAME', `ok -> ${alias}`);
+  res.json({ success: true, alias });
+});
+
+// Registry: change permissions *I* granted to a paired device
+app.post('/api/v2/device/permissions', express.json(), (req, res) => {
+  const dev = v2Gate(req, res);
+  if (!dev) return;
+  const target = ((req.body || {}).targetId || '').toString();
+  const peer = linkedDevices.get(target);
+  if (!peer || peer.revoked || !pairingOf(dev, target) || !pairingOf(peer, dev.deviceId)) {
+    res.status(400).json({ success: false, error: 'DEVICE_OFFLINE: paired device nahi hai' });
+    return;
+  }
+  dev.perms = dev.perms || {};
+  dev.perms[target] = cleanPerms((req.body || {}).perms);
+  audit(dev.deviceId, dev.name, 'PERMS_CHANGE', `ok ${JSON.stringify(dev.perms[target])}`, target);
+  res.json({ success: true, perms: dev.perms[target] });
+});
+
+// Registry: REVOKE a device — kills its tokens, blocks refresh, both sides see REVOKED
+app.post('/api/v2/device/revoke', express.json(), (req, res) => {
+  const dev = v2Gate(req, res);
+  if (!dev) return;
+  const target = ((req.body || {}).targetId || '').toString();
+  const peer = linkedDevices.get(target);
+  if (!peer || !pairingOf(dev, target)) {
+    res.status(400).json({ success: false, error: 'Device paired nahi hai.' });
+    return;
+  }
+  peer.revoked = true;
+  peer.revokedAt = Date.now();
+  peer.keyVersion = (peer.keyVersion || 0) + 1; // all its access tokens die
+  for (const [t, a] of accessTokens) if (a.deviceId === target) accessTokens.delete(t);
+  audit(dev.deviceId, dev.name, 'DEVICE_REVOKE', 'ok', target);
+  res.json({ success: true, revoked: target });
+});
+
+// Registry: REMOVE pairing (both directions) — revoked stays revoked until re-pair
+app.post('/api/v2/device/remove', express.json(), (req, res) => {
+  const dev = v2Gate(req, res);
+  if (!dev) return;
+  const target = ((req.body || {}).targetId || '').toString();
+  const peer = linkedDevices.get(target);
+  dev.pairings = (dev.pairings || []).filter((id) => id !== target);
+  if (dev.perms) delete dev.perms[target];
+  if (peer) {
+    peer.pairings = (peer.pairings || []).filter((id) => id !== dev.deviceId);
+    if (peer.perms) delete peer.perms[dev.deviceId];
+    if (peer.pairedWith === dev.deviceId) peer.pairedWith = (peer.pairings || [])[0] || null;
+  }
+  if (dev.pairedWith === target) dev.pairedWith = (dev.pairings || [])[0] || null;
+  audit(dev.deviceId, dev.name, 'DEVICE_REMOVE', 'ok', target);
+  res.json({ success: true });
+});
+
+// Audit: my own entries (actor == me or target == me), newest first
+app.get('/api/v2/audit', (req, res) => {
+  const dev = v2Gate(req, res);
+  if (!dev) return;
+  const mine = auditLog.filter((e) => e.actor === dev.deviceId || e.target === dev.deviceId).slice(-100).reverse();
+  res.json({ success: true, entries: mine });
 });
 
 // Cloud Sync: pull shared bucket (paired room ya solo)
@@ -1116,12 +2165,65 @@ app.use('/api/app-builder', createCloudBuilderRouter({
   appsRoot: path.join(process.cwd(), 'generated_apps'),
 }));
 
-// Health API
+// [FRIDAY v1 hook] versioned backend API: server-side AI router + quota +
+// server-decided entitlements. Legacy /api/chat keeps working unchanged.
+import { loadConfig } from './server/config.js';
+import { AIRouter } from './server/ai/router.js';
+import { FridayStore } from './server/store.js';
+import { createV1Router } from './server/v1.js';
+import { createCashfreeRouter } from './server/cashfree.js';
+import { effectivePlan, productById } from './server/billing.js';
+const fridayConfig = loadConfig();
+const aiRouter = new AIRouter(fridayConfig);
+const fridayStore = new FridayStore(fridayConfig.storePath);
+app.use('/api/v1', createV1Router({
+  config: fridayConfig,
+  router: aiRouter,
+  store: fridayStore,
+  redact: redactSecrets,
+  log: (...a: any[]) => console.log(...a),
+  logError: (...a: any[]) => console.error(...a),
+}));
+
+// [Cashfree hook] web payments (server-side only; dormant unless
+// CASHFREE_APP_ID/SECRET + webhook secret are configured — never grants
+// without a verified webhook + confirmed PAID status).
+app.use('/api/v1/billing', createCashfreeRouter({
+  productById: (id) => {
+    const p = productById(id);
+    return p ? { productId: p.productId, plan: p.plan, status: p.status, period: p.period, intendedPriceINR: p.intendedPriceINR } : null;
+  },
+  applyVerifiedOrder: ({ deviceKey, productId, status, expiryAt, verificationSource }) => {
+    fridayStore.setSubscription(deviceKey, {
+      status, productId, expiryAt, autoRenew: false, autoRenewing: false,
+      verificationSource, linkedAccountId: deviceKey,
+    });
+    const u = fridayStore.getOrCreateUser(deviceKey);
+    const plan = effectivePlan('FREE', {
+      status: u.subscription.status, productId: u.subscription.productId,
+      expiryAt: u.subscription.expiryAt, autoRenew: false, autoRenewing: false,
+      updatedAt: u.subscription.updatedAt,
+    } as never);
+    return { plan };
+  },
+  log: (...a: any[]) => console.log(...a),
+  logError: (...a: any[]) => console.error(...a),
+}));
+
+// Top-level liveness probe (safe info only — never secrets).
+app.get('/health', (_req, res) => {
+  res.json({ status: 'ok', assistant: 'FRIDAY', version: fridayConfig.version, time: new Date().toISOString() });
+});
+
+// Health API — liveness plus honest dependency state (never "online"
+// for something merely because the HTTP server runs).
 app.get('/api/health', (req, res) => {
+  const hasKey = Boolean(process.env.GEMINI_API_KEY);
   res.json({
     status: 'ok',
     assistant: 'FRIDAY',
-    hasKey: Boolean(process.env.GEMINI_API_KEY),
+    hasKey,
+    ai: hasKey ? 'configured' : 'missing',
     time: new Date().toISOString(),
   });
 });
@@ -1336,8 +2438,9 @@ async function main() {
       });
   });
 
-  // Vite middleware setup
+  // Vite middleware setup (dev only — dynamic import keeps it out of dist/server.cjs)
   if (process.env.NODE_ENV !== 'production') {
+    const { createServer: createViteServer } = await import('vite');
     const vite = await createViteServer({
       server: { middlewareMode: true },
       appType: 'spa',
@@ -1352,10 +2455,10 @@ async function main() {
   }
 
   server.listen(PORT, '0.0.0.0', () => {
-    console.log(`[FRIDAY] Core server running on http://0.0.0.0:${PORT}`);
+    console.log(`[JARVIS] Core server running on http://0.0.0.0:${PORT}`);
   });
 }
 
 main().catch((err) => {
-  console.error('[FRIDAY] Fatal startup error:', err);
+  console.error('[JARVIS] Fatal startup error:', err);
 });

@@ -75,7 +75,7 @@ export const HUDStudyMatrix: React.FC<HUDStudyMatrixProps> = ({
   onToggleScreenWatch,
   onClose,
 }) => {
-  const currentTheme = THEMES[theme] || THEMES.cyan;
+  const currentTheme = THEMES[theme] || THEMES.amber;
   const [isEditing, setIsEditing] = useState(false);
   const [editSubject, setEditSubject] = useState(curriculum.subject);
   const [editLevel, setEditLevel] = useState<StudyLevel>(curriculum.level);
@@ -186,7 +186,7 @@ export const HUDStudyMatrix: React.FC<HUDStudyMatrixProps> = ({
               onClick={() => setIsEditing(!isEditing)}
               className="px-3 py-1.5 rounded-lg border border-slate-700 bg-slate-800/80 hover:bg-slate-700 text-xs font-mono text-slate-200 flex items-center gap-1.5 transition-colors"
             >
-              <Edit3 className="w-3.5 h-3.5 text-cyan-400" />
+              <Edit3 className="w-3.5 h-3.5 text-amber-400" />
               <span>{isEditing ? 'Cancel Edit' : 'Edit Syllabus'}</span>
             </button>
             <button
@@ -236,7 +236,7 @@ export const HUDStudyMatrix: React.FC<HUDStudyMatrixProps> = ({
                 className={`px-3 py-2 rounded-lg text-xs font-mono font-semibold transition-all flex items-center gap-1.5 shadow-md ${
                   isScreenWatching
                     ? 'bg-rose-600 hover:bg-rose-500 text-white'
-                    : 'bg-cyan-600 hover:bg-cyan-500 text-white'
+                    : 'bg-amber-600 hover:bg-amber-500 text-white'
                 }`}
               >
                 {isScreenWatching ? 'Stop Watching' : 'Start Watching'}
@@ -250,7 +250,7 @@ export const HUDStudyMatrix: React.FC<HUDStudyMatrixProps> = ({
             >
               <div className="flex items-center gap-3">
                 <div
-                  className="p-2.5 rounded-lg border text-cyan-400"
+                  className="p-2.5 rounded-lg border text-amber-400"
                   style={{
                     backgroundColor: `${currentTheme.primary}20`,
                     borderColor: `${currentTheme.primary}55`,
@@ -302,7 +302,7 @@ export const HUDStudyMatrix: React.FC<HUDStudyMatrixProps> = ({
                 <p className="text-xs text-slate-300 mt-1 flex items-center gap-2">
                   <Sparkles className="w-3.5 h-3.5 text-amber-400" />
                   <span>Current Topic: </span>
-                  <strong className="text-cyan-300">{curriculum.currentTopic}</strong>
+                  <strong className="text-amber-300">{curriculum.currentTopic}</strong>
                 </p>
               </div>
 
@@ -420,7 +420,7 @@ export const HUDStudyMatrix: React.FC<HUDStudyMatrixProps> = ({
 
             {/* TOMORROW'S LESSON AGENDA CARD */}
             <div
-              className="p-5 rounded-xl border bg-slate-900/70 relative overflow-hidden group hover:border-cyan-500/60 transition-colors"
+              className="p-5 rounded-xl border bg-slate-900/70 relative overflow-hidden group hover:border-amber-500/60 transition-colors"
               style={{
                 borderColor: `${currentTheme.primary}44`,
                 boxShadow: `0 0 25px ${currentTheme.primary}15`,
@@ -445,17 +445,17 @@ export const HUDStudyMatrix: React.FC<HUDStudyMatrixProps> = ({
                     TOMORROW'S LESSON AGENDA
                   </h4>
                 </div>
-                <span className="text-[10px] font-mono text-cyan-400">NEXT SESSION</span>
+                <span className="text-[10px] font-mono text-amber-400">NEXT SESSION</span>
               </div>
 
-              <div className="p-3.5 rounded-lg bg-black/50 border border-cyan-500/30 text-sm text-slate-200 leading-relaxed font-sans">
+              <div className="p-3.5 rounded-lg bg-black/50 border border-amber-500/30 text-sm text-slate-200 leading-relaxed font-sans">
                 {curriculum.nextSessionPlan ||
                   'Tell FRIDAY what you want to cover tomorrow or click Edit Syllabus!'}
               </div>
 
               <div className="mt-3 flex items-center justify-between text-[11px] font-mono text-slate-400">
                 <span>Prompt to continue:</span>
-                <span className="text-cyan-300 italic font-sans">"FRIDAY, let's continue studying"</span>
+                <span className="text-amber-300 italic font-sans">"FRIDAY, let's continue studying"</span>
               </div>
             </div>
           </div>
@@ -475,10 +475,10 @@ export const HUDStudyMatrix: React.FC<HUDStudyMatrixProps> = ({
 
           {/* Edit Form Modal (When isEditing is active) */}
           {isEditing && (
-            <div className="p-5 rounded-xl border border-cyan-500/60 bg-slate-900/90 space-y-4 animate-in zoom-in-95 duration-200">
+            <div className="p-5 rounded-xl border border-amber-500/60 bg-slate-900/90 space-y-4 animate-in zoom-in-95 duration-200">
               <div className="flex items-center justify-between border-b border-slate-700/60 pb-3">
                 <h4 className="text-sm font-bold text-white flex items-center gap-2">
-                  <Edit3 className="w-4 h-4 text-cyan-400" />
+                  <Edit3 className="w-4 h-4 text-amber-400" />
                   <span>EDIT STUDY SYLLABUS & CONTINUITY</span>
                 </h4>
                 <div className="text-xs text-slate-400 font-mono">Changes sync automatically with FRIDAY</div>
@@ -491,7 +491,7 @@ export const HUDStudyMatrix: React.FC<HUDStudyMatrixProps> = ({
                     type="text"
                     value={editSubject}
                     onChange={(e) => setEditSubject(e.target.value)}
-                    className="w-full px-3 py-2 rounded-lg bg-black/60 border border-slate-700 text-sm text-white focus:outline-none focus:border-cyan-400"
+                    className="w-full px-3 py-2 rounded-lg bg-black/60 border border-slate-700 text-sm text-white focus:outline-none focus:border-amber-400"
                   />
                 </div>
 
@@ -500,7 +500,7 @@ export const HUDStudyMatrix: React.FC<HUDStudyMatrixProps> = ({
                   <select
                     value={editLevel}
                     onChange={(e) => setEditLevel(e.target.value as StudyLevel)}
-                    className="w-full px-3 py-2 rounded-lg bg-black/60 border border-slate-700 text-sm text-white focus:outline-none focus:border-cyan-400"
+                    className="w-full px-3 py-2 rounded-lg bg-black/60 border border-slate-700 text-sm text-white focus:outline-none focus:border-amber-400"
                   >
                     <option value="beginner">Beginner</option>
                     <option value="intermediate">Intermediate</option>
@@ -517,7 +517,7 @@ export const HUDStudyMatrix: React.FC<HUDStudyMatrixProps> = ({
                     rows={2}
                     value={editLeftOff}
                     onChange={(e) => setEditLeftOff(e.target.value)}
-                    className="w-full px-3 py-2 rounded-lg bg-black/60 border border-slate-700 text-sm text-white focus:outline-none focus:border-cyan-400"
+                    className="w-full px-3 py-2 rounded-lg bg-black/60 border border-slate-700 text-sm text-white focus:outline-none focus:border-amber-400"
                   />
                 </div>
 
@@ -529,7 +529,7 @@ export const HUDStudyMatrix: React.FC<HUDStudyMatrixProps> = ({
                     rows={2}
                     value={editNextPlan}
                     onChange={(e) => setEditNextPlan(e.target.value)}
-                    className="w-full px-3 py-2 rounded-lg bg-black/60 border border-slate-700 text-sm text-white focus:outline-none focus:border-cyan-400"
+                    className="w-full px-3 py-2 rounded-lg bg-black/60 border border-slate-700 text-sm text-white focus:outline-none focus:border-amber-400"
                   />
                 </div>
 
@@ -539,7 +539,7 @@ export const HUDStudyMatrix: React.FC<HUDStudyMatrixProps> = ({
                     type="text"
                     value={editChallenge}
                     onChange={(e) => setEditChallenge(e.target.value)}
-                    className="w-full px-3 py-2 rounded-lg bg-black/60 border border-slate-700 text-sm text-white focus:outline-none focus:border-cyan-400"
+                    className="w-full px-3 py-2 rounded-lg bg-black/60 border border-slate-700 text-sm text-white focus:outline-none focus:border-amber-400"
                   />
                 </div>
               </div>
@@ -555,7 +555,7 @@ export const HUDStudyMatrix: React.FC<HUDStudyMatrixProps> = ({
                 <button
                   type="button"
                   onClick={handleSaveEdits}
-                  className="px-4 py-1.5 rounded-lg bg-cyan-600 hover:bg-cyan-500 text-xs font-mono font-semibold text-white shadow-lg"
+                  className="px-4 py-1.5 rounded-lg bg-amber-600 hover:bg-amber-500 text-xs font-mono font-semibold text-white shadow-lg"
                 >
                   Save Syllabus
                 </button>
@@ -575,9 +575,9 @@ export const HUDStudyMatrix: React.FC<HUDStudyMatrixProps> = ({
                   key={idx}
                   type="button"
                   onClick={() => handleApplyPreset(preset)}
-                  className="p-2.5 text-left rounded-lg border border-slate-800 hover:border-cyan-500/50 bg-black/30 hover:bg-slate-800/60 transition-all group"
+                  className="p-2.5 text-left rounded-lg border border-slate-800 hover:border-amber-500/50 bg-black/30 hover:bg-slate-800/60 transition-all group"
                 >
-                  <div className="flex items-center justify-between text-xs font-semibold text-white group-hover:text-cyan-300">
+                  <div className="flex items-center justify-between text-xs font-semibold text-white group-hover:text-amber-300">
                     <span className="truncate">{preset.subject}</span>
                     <span className="text-[10px] font-mono px-1.5 py-0.5 rounded bg-slate-800 text-slate-400 uppercase">
                       {preset.level}
@@ -630,7 +630,7 @@ export const HUDStudyMatrix: React.FC<HUDStudyMatrixProps> = ({
             <div className="p-4 rounded-xl border border-slate-800 bg-slate-900/40">
               <div className="flex items-center justify-between mb-3">
                 <h4 className="text-xs font-mono font-bold uppercase text-slate-300 flex items-center gap-2">
-                  <BookOpen className="w-4 h-4 text-cyan-400" />
+                  <BookOpen className="w-4 h-4 text-amber-400" />
                   <span>STUDY NOTEBOOK ({(curriculum.keyTakeaways || []).length})</span>
                 </h4>
               </div>
@@ -642,11 +642,11 @@ export const HUDStudyMatrix: React.FC<HUDStudyMatrixProps> = ({
                   placeholder="Record takeaway or rule of thumb..."
                   value={newNote}
                   onChange={(e) => setNewNote(e.target.value)}
-                  className="flex-1 px-3 py-1.5 rounded-lg bg-black/50 border border-slate-700 text-xs text-white focus:outline-none focus:border-cyan-400"
+                  className="flex-1 px-3 py-1.5 rounded-lg bg-black/50 border border-slate-700 text-xs text-white focus:outline-none focus:border-amber-400"
                 />
                 <button
                   type="submit"
-                  className="px-3 py-1.5 rounded-lg bg-cyan-600 hover:bg-cyan-500 text-xs font-mono text-white flex items-center gap-1 cursor-pointer"
+                  className="px-3 py-1.5 rounded-lg bg-amber-600 hover:bg-amber-500 text-xs font-mono text-white flex items-center gap-1 cursor-pointer"
                 >
                   <Plus className="w-3.5 h-3.5" />
                   <span>Add</span>
@@ -678,7 +678,7 @@ export const HUDStudyMatrix: React.FC<HUDStudyMatrixProps> = ({
               Recommended Voice Prompts to Say to FRIDAY:
             </h4>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs font-mono">
-              <div className="p-2 rounded bg-slate-900/60 border border-slate-800 text-cyan-300">
+              <div className="p-2 rounded bg-slate-900/60 border border-slate-800 text-amber-300">
                 💬 "FRIDAY, where did we leave off?"
               </div>
               <div className="p-2 rounded bg-slate-900/60 border border-slate-800 text-emerald-300">

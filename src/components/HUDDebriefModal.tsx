@@ -35,7 +35,7 @@ export const HUDDebriefModal: React.FC<HUDDebriefModalProps> = ({
   theme,
   onClose,
 }) => {
-  const currentTheme = THEMES[theme] || THEMES.cyan;
+  const currentTheme = THEMES[theme] || THEMES.amber;
   const [entries, setEntries] = useState<TranscriptEntry[]>([]);
   const [stats, setStats] = useState<SessionDebriefStats>(globalTranscriptManager.getStats());
   const [copied, setCopied] = useState<boolean>(false);
@@ -194,7 +194,7 @@ export const HUDDebriefModal: React.FC<HUDDebriefModalProps> = ({
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 p-4 border-b border-slate-800/80 bg-black/40">
           <div className="p-3 rounded-xl border border-slate-800 bg-slate-900/30">
             <div className="flex items-center gap-2 text-slate-400 text-xs font-mono mb-1">
-              <Clock className="w-3.5 h-3.5 text-cyan-400" />
+              <Clock className="w-3.5 h-3.5 text-amber-400" />
               <span>Session Duration</span>
             </div>
             <strong className="text-base font-mono text-white">
@@ -242,7 +242,7 @@ export const HUDDebriefModal: React.FC<HUDDebriefModalProps> = ({
           ) : (
             entries.map((entry) => {
               const isUser = entry.sender === 'user';
-              const isFriday = entry.sender === 'friday';
+              const isFriday = entry.sender === 'jarvis';
               const isTool = entry.sender === 'tool';
               const isSystem = entry.sender === 'system';
 
@@ -251,7 +251,7 @@ export const HUDDebriefModal: React.FC<HUDDebriefModalProps> = ({
                   key={entry.id}
                   className={`p-3.5 rounded-xl border transition-all ${
                     isUser
-                      ? 'bg-cyan-950/20 border-cyan-500/40 ml-6 sm:ml-16'
+                      ? 'bg-amber-950/20 border-amber-500/40 ml-6 sm:ml-16'
                       : isFriday
                       ? 'bg-slate-900/60 border-slate-800 mr-6 sm:mr-16'
                       : isTool
@@ -262,7 +262,7 @@ export const HUDDebriefModal: React.FC<HUDDebriefModalProps> = ({
                   <div className="flex items-center justify-between gap-2 mb-1.5">
                     <div className="flex items-center gap-2">
                       {isUser && (
-                        <span className="flex items-center gap-1 text-[11px] font-mono font-bold text-cyan-300 uppercase">
+                        <span className="flex items-center gap-1 text-[11px] font-mono font-bold text-amber-300 uppercase">
                           <User className="w-3.5 h-3.5" />
                           <span>{profile.callSign || 'COMMANDER'}</span>
                         </span>

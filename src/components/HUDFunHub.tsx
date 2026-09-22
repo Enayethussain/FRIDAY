@@ -77,7 +77,7 @@ export function HUDFunHub({ isOpen, onClose }: HUDFunHubProps) {
           ))}
         </div>
 
-        {loading && <p className="text-cyan-400 text-center py-8">Loading...</p>}
+        {loading && <p className="text-amber-400 text-center py-8">Loading...</p>}
         {error && <p className="text-red-400 text-center py-4">{error}</p>}
 
         {!loading && !error && tab === 'news' && (
@@ -97,7 +97,7 @@ export function HUDFunHub({ isOpen, onClose }: HUDFunHubProps) {
             {joke ? (
               <>
                 <div className="p-4 rounded-xl bg-slate-800/60 border border-slate-700"><p className="text-slate-100 whitespace-pre-line">{joke}</p></div>
-                <div className="p-4 rounded-xl bg-cyan-500/10 border border-cyan-500/30"><p className="text-cyan-200 text-sm">💡 Fact: {fact}</p></div>
+                <div className="p-4 rounded-xl bg-amber-500/10 border border-amber-500/30"><p className="text-amber-200 text-sm">💡 Fact: {fact}</p></div>
                 <button onClick={() => load('jokes')} className="flex items-center gap-2 px-4 py-2 bg-fuchsia-500 rounded-xl text-white font-semibold"><RefreshCw className="w-4 h-4" /> Ek aur!</button>
               </>
             ) : <button onClick={() => load('jokes')} className="w-full py-3 bg-fuchsia-500 rounded-xl text-white font-semibold">Mood fresh karo 😄</button>}

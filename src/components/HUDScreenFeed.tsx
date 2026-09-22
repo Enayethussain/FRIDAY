@@ -21,7 +21,7 @@ export const HUDScreenFeed: React.FC<HUDScreenFeedProps> = ({
   onOpenStudyMatrix,
 }) => {
   const containerRef = useRef<HTMLDivElement | null>(null);
-  const currentTheme = THEMES[theme] || THEMES.cyan;
+  const currentTheme = THEMES[theme] || THEMES.amber;
   const [isExpanded, setIsExpanded] = useState(false);
 
   useEffect(() => {
@@ -94,7 +94,7 @@ export const HUDScreenFeed: React.FC<HUDScreenFeedProps> = ({
             <button
               type="button"
               onClick={onOpenStudyMatrix}
-              className="p-1 rounded bg-black/70 border border-slate-700 text-slate-300 hover:text-cyan-300 transition-colors"
+              className="p-1 rounded bg-black/70 border border-slate-700 text-slate-300 hover:text-amber-300 transition-colors"
               title="Open Study Syllabus"
             >
               <BookOpen className="w-3.5 h-3.5" />
@@ -122,7 +122,7 @@ export const HUDScreenFeed: React.FC<HUDScreenFeedProps> = ({
       {/* Bottom Status Ticker */}
       <div className="absolute bottom-2 left-3 right-3 flex items-center justify-between text-[9px] font-mono text-slate-400 pointer-events-none">
         <span className="truncate max-w-[170px] text-slate-300 flex items-center gap-1">
-          <Monitor className="w-2.5 h-2.5 text-cyan-400 inline" />
+          <Monitor className="w-2.5 h-2.5 text-amber-400 inline" />
           {streamLabel || 'Screen Vision Feed'}
         </span>
         <div className="flex items-center gap-1 text-emerald-400">

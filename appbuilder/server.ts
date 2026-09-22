@@ -1,4 +1,4 @@
-// FRIDAY App Builder standalone service — port 3822.
+// JARVIS App Builder standalone service — port 3822.
 // Intentionally SEPARATE from server.ts (existing backend untouched).
 // Endpoints: POST /ab/build {request}, GET /ab/apps, POST /ab/delete {id}, GET /ab/health
 import express from 'express';

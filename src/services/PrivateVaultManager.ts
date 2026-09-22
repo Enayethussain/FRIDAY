@@ -39,7 +39,7 @@ Quantum Flux Encryption: AES-GCM-256 Poly1305
 Auto-Destruct Safeguard: Enabled on 3 failed biometric handshakes.
 
 [PRIVATE PROTOCOL OVERRIDES]
-1. Neural Wakeword "Hey FRIDAY" triggers instant encrypted tunnel.
+1. Neural Wakeword "Hey JARVIS" triggers instant encrypted tunnel.
 2. In case of hostile interception, execute Protocol Clean Slate.
 3. Private file storage must remain zero-knowledge in local memory.
 `,

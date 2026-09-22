@@ -32,7 +32,7 @@ export const HUDRoutinePreferences: React.FC<HUDRoutinePreferencesProps> = ({
   theme,
   onClose,
 }) => {
-  const currentTheme = THEMES[theme] || THEMES.cyan;
+  const currentTheme = THEMES[theme] || THEMES.amber;
 
   const [activeTab, setActiveTab] = useState<'routine' | 'preferences'>('routine');
   const [routines, setRoutines] = useState<DailyRoutineItem[]>([]);
@@ -123,7 +123,7 @@ export const HUDRoutinePreferences: React.FC<HUDRoutinePreferencesProps> = ({
       case 'morning':
         return <Sun className="w-4 h-4 text-amber-400" />;
       case 'work':
-        return <Code2 className="w-4 h-4 text-cyan-400" />;
+        return <Code2 className="w-4 h-4 text-amber-400" />;
       case 'study':
         return <Sparkles className="w-4 h-4 text-violet-400" />;
       case 'workout':
@@ -133,7 +133,7 @@ export const HUDRoutinePreferences: React.FC<HUDRoutinePreferencesProps> = ({
       case 'night':
         return <Moon className="w-4 h-4 text-indigo-400" />;
       default:
-        return <Clock className="w-4 h-4 text-sky-400" />;
+        return <Clock className="w-4 h-4 text-amber-400" />;
     }
   };
 
@@ -175,7 +175,7 @@ export const HUDRoutinePreferences: React.FC<HUDRoutinePreferencesProps> = ({
                 <h3 className="font-display font-bold text-slate-100 text-base sm:text-lg">
                   COMMANDER ROUTINE & PREFERENCES MATRIX
                 </h3>
-                <span className="text-[10px] px-2 py-0.5 rounded bg-cyan-950/60 border border-cyan-500/40 text-cyan-400">
+                <span className="text-[10px] px-2 py-0.5 rounded bg-amber-950/60 border border-amber-500/40 text-amber-400">
                   NEURAL SYNCED
                 </span>
               </div>
@@ -213,7 +213,7 @@ export const HUDRoutinePreferences: React.FC<HUDRoutinePreferencesProps> = ({
               onClick={() => setActiveTab('routine')}
               className={`flex items-center gap-2 px-3.5 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer ${
                 activeTab === 'routine'
-                  ? 'bg-cyan-500 text-black shadow-[0_0_15px_rgba(6,182,212,0.4)]'
+                  ? 'bg-amber-500 text-black shadow-[0_0_15px_rgba(255,196,0,0.4)]'
                   : 'bg-slate-900/80 border border-slate-800 text-slate-400 hover:text-white'
               }`}
             >
@@ -239,7 +239,7 @@ export const HUDRoutinePreferences: React.FC<HUDRoutinePreferencesProps> = ({
 
           {/* Voice Prompt */}
           <div className="flex items-center gap-1.5 text-[11px] text-slate-400 truncate">
-            <Sparkles className="w-3.5 h-3.5 text-cyan-400 shrink-0" />
+            <Sparkles className="w-3.5 h-3.5 text-amber-400 shrink-0" />
             <span className="truncate">Say: "FRIDAY, meri pasand aur daily routine batao"</span>
           </div>
         </div>
@@ -261,7 +261,7 @@ export const HUDRoutinePreferences: React.FC<HUDRoutinePreferencesProps> = ({
                 <button
                   type="button"
                   onClick={() => setIsAddRoutineOpen(true)}
-                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-cyan-600 hover:bg-cyan-500 text-black text-xs font-bold transition-all cursor-pointer"
+                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-amber-600 hover:bg-amber-500 text-black text-xs font-bold transition-all cursor-pointer"
                 >
                   <Plus className="w-3.5 h-3.5" />
                   <span>Add Routine Block</span>
@@ -274,7 +274,7 @@ export const HUDRoutinePreferences: React.FC<HUDRoutinePreferencesProps> = ({
                     key={item.id}
                     className={`p-4 rounded-xl border transition-all flex flex-col justify-between ${
                       item.isActive
-                        ? 'bg-[#0a0f1e] border-slate-800 hover:border-cyan-500/50 shadow-md'
+                        ? 'bg-[#0a0f1e] border-slate-800 hover:border-amber-500/50 shadow-md'
                         : 'bg-slate-950/40 border-slate-900 opacity-60'
                     }`}
                   >
@@ -284,7 +284,7 @@ export const HUDRoutinePreferences: React.FC<HUDRoutinePreferencesProps> = ({
                           <div className="p-1.5 rounded-lg bg-slate-900 border border-slate-800">
                             {getRoutineCategoryIcon(item.category)}
                           </div>
-                          <span className="text-xs font-bold text-cyan-400 font-mono">
+                          <span className="text-xs font-bold text-amber-400 font-mono">
                             {item.timeSlot}
                           </span>
                         </div>
@@ -452,10 +452,10 @@ export const HUDRoutinePreferences: React.FC<HUDRoutinePreferencesProps> = ({
         {/* Add Routine Modal */}
         {isAddRoutineOpen && (
           <div className="absolute inset-0 z-20 bg-black/85 flex items-center justify-center p-4 backdrop-blur-sm">
-            <div className="w-full max-w-md bg-[#0a0f1d] border border-slate-700 rounded-2xl p-5 shadow-2xl">
+            <div className="w-full max-w-md bg-[#080A0D] border border-slate-700 rounded-2xl p-5 shadow-2xl">
               <div className="flex items-center justify-between pb-3 mb-3 border-b border-slate-800">
                 <h4 className="text-xs font-bold text-slate-100 uppercase tracking-wider flex items-center gap-2">
-                  <Clock className="w-4 h-4 text-cyan-400" />
+                  <Clock className="w-4 h-4 text-amber-400" />
                   <span>Add Routine Time Block</span>
                 </h4>
                 <button
@@ -475,7 +475,7 @@ export const HUDRoutinePreferences: React.FC<HUDRoutinePreferencesProps> = ({
                     value={newRoutineTime}
                     onChange={(e) => setNewRoutineTime(e.target.value)}
                     placeholder="e.g. 08:00 AM - 09:00 AM"
-                    className="w-full px-3 py-2 rounded-lg bg-slate-900 border border-slate-700 text-slate-100 outline-none focus:border-cyan-500"
+                    className="w-full px-3 py-2 rounded-lg bg-slate-900 border border-slate-700 text-slate-100 outline-none focus:border-amber-500"
                     required
                   />
                 </div>
@@ -487,7 +487,7 @@ export const HUDRoutinePreferences: React.FC<HUDRoutinePreferencesProps> = ({
                     value={newRoutineActivity}
                     onChange={(e) => setNewRoutineActivity(e.target.value)}
                     placeholder="e.g. Deep Coding Session"
-                    className="w-full px-3 py-2 rounded-lg bg-slate-900 border border-slate-700 text-slate-100 outline-none focus:border-cyan-500"
+                    className="w-full px-3 py-2 rounded-lg bg-slate-900 border border-slate-700 text-slate-100 outline-none focus:border-amber-500"
                     required
                   />
                 </div>
@@ -529,7 +529,7 @@ export const HUDRoutinePreferences: React.FC<HUDRoutinePreferencesProps> = ({
                   </button>
                   <button
                     type="submit"
-                    className="px-4 py-1.5 rounded-lg bg-cyan-600 hover:bg-cyan-500 text-black font-bold"
+                    className="px-4 py-1.5 rounded-lg bg-amber-600 hover:bg-amber-500 text-black font-bold"
                   >
                     Save Routine
                   </button>
@@ -542,7 +542,7 @@ export const HUDRoutinePreferences: React.FC<HUDRoutinePreferencesProps> = ({
         {/* Add Preference Modal */}
         {isAddPrefOpen && (
           <div className="absolute inset-0 z-20 bg-black/85 flex items-center justify-center p-4 backdrop-blur-sm">
-            <div className="w-full max-w-md bg-[#0a0f1d] border border-slate-700 rounded-2xl p-5 shadow-2xl">
+            <div className="w-full max-w-md bg-[#080A0D] border border-slate-700 rounded-2xl p-5 shadow-2xl">
               <div className="flex items-center justify-between pb-3 mb-3 border-b border-slate-800">
                 <h4 className="text-xs font-bold text-slate-100 uppercase tracking-wider flex items-center gap-2">
                   <Heart className="w-4 h-4 text-rose-400" />
@@ -666,7 +666,7 @@ export const HUDRoutinePreferences: React.FC<HUDRoutinePreferencesProps> = ({
         {/* Footer */}
         <div className="px-5 py-2.5 bg-[#050810] border-t border-slate-800 flex items-center justify-between text-[11px] text-slate-400">
           <div className="flex items-center gap-2">
-            <CheckCircle2 className="w-3.5 h-3.5 text-cyan-400" />
+            <CheckCircle2 className="w-3.5 h-3.5 text-amber-400" />
             <span>COMMANDER PSYCHOMETRIC & ROUTINE PROFILE ACTIVE</span>
           </div>
           <button

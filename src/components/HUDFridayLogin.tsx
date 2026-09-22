@@ -82,7 +82,7 @@ function u32(n) { return new Uint8Array(new Uint32Array([n]).buffer); }
 function hex(b) { return Array.from(new Uint8Array(b)).map(x=>x.toString(16).padStart(2,'0')).join(''); }
 `;
 
-/** FRIDAY security gate — CYBER-LOCK UI ported 1:1, naam FRIDAY ke hisab se */
+/** FRIDAY security gate — CYBER-LOCK UI */
 export const HUDFridayLogin: React.FC<HUDFridayLoginProps> = ({ isSetup, onAuthenticate }) => {
   const [started, setStarted] = useState(false);
   const [pass, setPass] = useState('');
@@ -306,9 +306,9 @@ export const HUDFridayLogin: React.FC<HUDFridayLoginProps> = ({ isSetup, onAuthe
         .fl-root { position: fixed; inset: 0; z-index: 10001; background: #05020a; color: #fff; font-family: 'Rajdhani', sans-serif; overflow: hidden; height: 100vh; display: flex; align-items: center; justify-content: center; user-select: none; }
         .fl-root * { box-sizing: border-box; }
         #fl-matrix { position: absolute; top: 0; left: 0; width: 100%; height: 100%; z-index: 0; opacity: 0.25; pointer-events: none; }
-        #fl-drop { position: absolute; top: 0; left: 0; width: 100%; height: 100%; background: rgba(6,182,212,0.2); backdrop-filter: blur(5px); z-index: 999; display: flex; align-items: center; justify-content: center; border: 4px dashed #06b6d4; opacity: 0; pointer-events: none; transition: 0.3s; }
+        #fl-drop { position: absolute; top: 0; left: 0; width: 100%; height: 100%; background: rgba(255,196,0,0.2); backdrop-filter: blur(5px); z-index: 999; display: flex; align-items: center; justify-content: center; border: 4px dashed #FFC400; opacity: 0; pointer-events: none; transition: 0.3s; }
         #fl-drop.active { opacity: 1; pointer-events: all; }
-        #fl-drop h2 { font-family: 'Orbitron'; font-size: 3rem; color: #fff; text-shadow: 0 0 20px #06b6d4; margin: 0; }
+        #fl-drop h2 { font-family: 'Orbitron'; font-size: 3rem; color: #fff; text-shadow: 0 0 20px #FFC400; margin: 0; }
         #fl-init { position: absolute; top: 0; left: 0; width: 100%; height: 100%; background: rgba(5,2,10,0.98); z-index: 1000; display: flex; flex-direction: column; align-items: center; justify-content: center; cursor: pointer; transition: opacity 0.6s; }
         #fl-init.fade-out { opacity: 0; pointer-events: none; }
         .fl-ring { width: 60px; height: 60px; border: 4px solid rgba(255,255,255,0.1); border-top: 4px solid #d946ef; border-radius: 50%; animation: flspin 1s linear infinite; margin-bottom: 20px; }
@@ -316,17 +316,17 @@ export const HUDFridayLogin: React.FC<HUDFridayLoginProps> = ({ isSetup, onAuthe
         .fl-panel { position: relative; z-index: 10; width: 800px; max-width: 90vw; max-height: 92vh; overflow-y: auto; padding: 40px; background: rgba(20,10,40,0.6); backdrop-filter: blur(20px); -webkit-backdrop-filter: blur(20px); border: 1px solid rgba(255,255,255,0.1); border-radius: 16px; box-shadow: 0 0 50px rgba(139,92,246,0.15); transition: transform 0.4s, opacity 0.4s; opacity: 0; transform: scale(0.95) translateY(20px); }
         .fl-panel.active { opacity: 1; transform: scale(1) translateY(0); }
         .fl-header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 20px; }
-        h1.fl-title { font-family: 'Orbitron'; margin: 0; font-size: 2.2rem; background: linear-gradient(90deg, #fff, #d946ef, #06b6d4); -webkit-background-clip: text; -webkit-text-fill-color: transparent; letter-spacing: 4px; line-height: 1.1; }
+        h1.fl-title { font-family: 'Orbitron'; margin: 0; font-size: 2.2rem; background: linear-gradient(90deg, #fff, #d946ef, #FFC400); -webkit-background-clip: text; -webkit-text-fill-color: transparent; letter-spacing: 4px; line-height: 1.1; }
         .fl-sub { color: #8b5cf6; letter-spacing: 2px; font-size: 0.8rem; text-transform: uppercase; margin-top: 5px; }
-        .fl-mute { background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1); color: #06b6d4; width: 40px; height: 40px; border-radius: 50%; display: flex; align-items: center; justify-content: center; cursor: pointer; transition: 0.3s; }
-        .fl-mute:hover { background: #06b6d4; color: #000; box-shadow: 0 0 15px #06b6d4; }
+        .fl-mute { background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1); color: #FFC400; width: 40px; height: 40px; border-radius: 50%; display: flex; align-items: center; justify-content: center; cursor: pointer; transition: 0.3s; }
+        .fl-mute:hover { background: #FFC400; color: #000; box-shadow: 0 0 15px #FFC400; }
         .fl-input-group { margin-bottom: 25px; position: relative; }
         .fl-input-group input { width: 100%; background: rgba(0,0,0,0.4); border: 1px solid #3f3f46; padding: 16px; color: #fff; font-family: 'Orbitron'; letter-spacing: 3px; font-size: 1.1rem; border-radius: 8px; outline: none; transition: 0.3s; }
         .fl-input-group input:focus { border-color: #d946ef; box-shadow: 0 0 20px rgba(217,70,239,0.2); }
         .fl-grid { display: grid; grid-template-columns: 1fr 2fr; gap: 15px; margin-bottom: 30px; }
         .fl-zone { border: 1px dashed #4b5563; background: rgba(255,255,255,0.01); border-radius: 12px; min-height: 110px; padding: 12px; display: flex; flex-direction: column; align-items: center; justify-content: center; cursor: pointer; transition: 0.3s; position: relative; overflow: hidden; }
         .fl-zone:hover { background: rgba(139,92,246,0.1); border-color: #d946ef; }
-        .fl-zone.active { border-style: solid; border-color: #06b6d4; background: rgba(6,182,212,0.15); }
+        .fl-zone.active { border-style: solid; border-color: #FFC400; background: rgba(255,196,0,0.15); }
         .fl-zone-icon { font-size: 1.8rem; margin-bottom: 8px; }
         .fl-zone-label { font-size: 0.75rem; color: #9ca3af; text-transform: uppercase; letter-spacing: 1px; }
         .fl-zone-file { font-size: 0.9rem; color: #fff; font-weight: 700; margin-top: 5px; max-width: 90%; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
@@ -339,11 +339,11 @@ export const HUDFridayLogin: React.FC<HUDFridayLoginProps> = ({ isSetup, onAuthe
         button.fl-btn:disabled { filter: grayscale(1); opacity: 0.5; cursor: not-allowed; transform: none; box-shadow: none; }
         .fl-status-wrap { margin-top: 25px; }
         .fl-bar-bg { height: 6px; background: rgba(255,255,255,0.05); border-radius: 3px; overflow: hidden; margin-bottom: 10px; }
-        .fl-bar-fill { height: 100%; width: 0%; background: #06b6d4; box-shadow: 0 0 15px #06b6d4; transition: width 0.1s linear; }
+        .fl-bar-fill { height: 100%; width: 0%; background: #FFC400; box-shadow: 0 0 15px #FFC400; transition: width 0.1s linear; }
         .fl-status { font-family: 'Orbitron'; font-size: 0.8rem; color: rgba(255,255,255,0.6); text-align: center; letter-spacing: 1px; }
-        #fl-bubble { position: fixed; pointer-events: none; opacity: 0; z-index: 2000; background: rgba(0,0,0,0.95); border: 1px solid #06b6d4; padding: 15px; border-radius: 0 12px 12px 12px; box-shadow: 0 10px 30px rgba(0,0,0,0.5); transition: opacity 0.2s, transform 0.2s; transform: translateY(10px); max-width: 280px; }
+        #fl-bubble { position: fixed; pointer-events: none; opacity: 0; z-index: 2000; background: rgba(0,0,0,0.95); border: 1px solid #FFC400; padding: 15px; border-radius: 0 12px 12px 12px; box-shadow: 0 10px 30px rgba(0,0,0,0.5); transition: opacity 0.2s, transform 0.2s; transform: translateY(10px); max-width: 280px; }
         #fl-bubble.visible { opacity: 1; transform: translateY(0); }
-        #fl-bubble h4 { color: #06b6d4; margin: 0 0 5px 0; font-family: 'Orbitron'; font-size: 0.9rem; }
+        #fl-bubble h4 { color: #FFC400; margin: 0 0 5px 0; font-family: 'Orbitron'; font-size: 0.9rem; }
         #fl-bubble p { color: #ccc; margin: 0; font-size: 0.85rem; line-height: 1.4; }
         .fl-hint { text-align: center; font-size: 0.75rem; color: #6b7280; font-family: 'Orbitron'; margin-top: 12px; letter-spacing: 1px; }
         @media (max-width: 600px) {
@@ -366,7 +366,7 @@ export const HUDFridayLogin: React.FC<HUDFridayLoginProps> = ({ isSetup, onAuthe
         <div id="fl-init" onClick={init}>
           <div className="fl-ring" />
           <h2 style={{ fontFamily: 'Orbitron', color: 'white', letterSpacing: 2 }}>SYSTEM STANDBY</h2>
-          <p style={{ color: '#06b6d4', fontSize: '0.9rem' }}>CLICK ANYWHERE TO INITIALIZE FRIDAY</p>
+          <p style={{ color: '#FFC400', fontSize: '0.9rem' }}>CLICK ANYWHERE TO INITIALIZE FRIDAY</p>
         </div>
       )}
 
@@ -452,7 +452,7 @@ export const HUDFridayLogin: React.FC<HUDFridayLoginProps> = ({ isSetup, onAuthe
         </div>
 
         <div className="fl-status-wrap">
-          <div className="fl-bar-bg"><div className="fl-bar-fill" style={{ width: `${progress}%`, background: isErr ? '#ef4444' : '#06b6d4' }} /></div>
+          <div className="fl-bar-bg"><div className="fl-bar-fill" style={{ width: `${progress}%`, background: isErr ? '#ef4444' : '#FFC400' }} /></div>
           <div className="fl-status" style={{ color: isErr ? '#ef4444' : undefined }}>{status}</div>
           <div className="fl-hint">FRIDAY SECURE GATE • ARGON2ID + AES-256-GCM • {isSetup ? 'SETUP MODE' : 'LOGIN MODE'}</div>
         </div>

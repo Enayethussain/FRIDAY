@@ -1,5 +1,5 @@
 /**
- * Web Audio API based sound synthesizer for FRIDAY HUD
+ * Web Audio API based sound synthesizer for JARVIS HUD
  * Provides authentic Stark/Avengers sci-fi feedback audio without external asset dependencies.
  */
 
@@ -22,7 +22,7 @@ class SoundEffectsEngine {
   }
 
   /**
-   * Sci-fi chime played when wakeword "Hey Friday" or "Friday" is detected
+   * Sci-fi chime played when wakeword "Hey Jarvis" or "Jarvis" is detected
    */
   playWakewordChime(): void {
     const ctx = this.getContext();

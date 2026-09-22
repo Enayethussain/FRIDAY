@@ -37,7 +37,7 @@ interface HUDKnowledgeGraphProps {
 
 const GROUP_COLORS: Record<GraphNodeGroup, { stroke: string; fill: string; text: string }> = {
   commander: { stroke: '#fbbf24', fill: 'rgba(251,191,36,0.2)', text: '#fef3c7' },
-  memory: { stroke: '#22d3ee', fill: 'rgba(34,211,238,0.2)', text: '#cffafe' },
+  memory: { stroke: '#FFC400', fill: 'rgba(255,196,0,0.2)', text: '#cffafe' },
   curriculum: { stroke: '#a855f7', fill: 'rgba(168,85,247,0.2)', text: '#f3e8ff' },
   concept: { stroke: '#34d399', fill: 'rgba(52,211,153,0.2)', text: '#d1fae5' },
   subsystem: { stroke: '#f43f5e', fill: 'rgba(244,63,94,0.2)', text: '#ffe4e6' },
@@ -48,7 +48,7 @@ export const HUDKnowledgeGraph: React.FC<HUDKnowledgeGraphProps> = ({
   theme,
   onClose,
 }) => {
-  const currentTheme = THEMES[theme] || THEMES.cyan;
+  const currentTheme = THEMES[theme] || THEMES.amber;
   const svgRef = useRef<SVGSVGElement | null>(null);
   const containerRef = useRef<HTMLDivElement | null>(null);
 
@@ -309,8 +309,8 @@ export const HUDKnowledgeGraph: React.FC<HUDKnowledgeGraphProps> = ({
     node
       .append('circle')
       .attr('r', (d: any) => d.value)
-      .attr('fill', (d: any) => GROUP_COLORS[d.group as GraphNodeGroup]?.fill || '#06b6d433')
-      .attr('stroke', (d: any) => GROUP_COLORS[d.group as GraphNodeGroup]?.stroke || '#06b6d4')
+      .attr('fill', (d: any) => GROUP_COLORS[d.group as GraphNodeGroup]?.fill || '#FFC40033')
+      .attr('stroke', (d: any) => GROUP_COLORS[d.group as GraphNodeGroup]?.stroke || '#FFC400')
       .attr('stroke-width', 2)
       .attr('filter', 'url(#glow)');
 
@@ -436,7 +436,7 @@ export const HUDKnowledgeGraph: React.FC<HUDKnowledgeGraphProps> = ({
                   }}
                   className={`px-2.5 py-1 rounded-lg text-xs font-mono font-semibold transition-all cursor-pointer flex items-center gap-1.5 whitespace-nowrap ${
                     active
-                      ? 'bg-cyan-500/20 text-cyan-300 border border-cyan-500/60 shadow-sm'
+                      ? 'bg-amber-500/20 text-amber-300 border border-amber-500/60 shadow-sm'
                       : 'bg-slate-900/60 text-slate-400 border border-slate-800 hover:text-white'
                   }`}
                 >
@@ -465,7 +465,7 @@ export const HUDKnowledgeGraph: React.FC<HUDKnowledgeGraphProps> = ({
               placeholder="Search concepts or memories..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              className="w-full pl-8 pr-3 py-1 rounded-lg bg-slate-900/80 border border-slate-800 text-slate-200 text-xs focus:outline-none focus:border-cyan-500/60 placeholder:text-slate-600"
+              className="w-full pl-8 pr-3 py-1 rounded-lg bg-slate-900/80 border border-slate-800 text-slate-200 text-xs focus:outline-none focus:border-amber-500/60 placeholder:text-slate-600"
             />
           </div>
 
@@ -474,7 +474,7 @@ export const HUDKnowledgeGraph: React.FC<HUDKnowledgeGraphProps> = ({
               <span className="w-2 h-2 rounded-full bg-amber-400" /> Commander
             </span>
             <span className="flex items-center gap-1.5">
-              <span className="w-2 h-2 rounded-full bg-cyan-400" /> Memory
+              <span className="w-2 h-2 rounded-full bg-amber-400" /> Memory
             </span>
             <span className="flex items-center gap-1.5">
               <span className="w-2 h-2 rounded-full bg-violet-400" /> Syllabus
@@ -509,7 +509,7 @@ export const HUDKnowledgeGraph: React.FC<HUDKnowledgeGraphProps> = ({
               <div>
                 <div className="flex items-center justify-between pb-3 border-b border-slate-800">
                   <div className="flex items-center gap-2">
-                    <Info className="w-4 h-4 text-cyan-400" />
+                    <Info className="w-4 h-4 text-amber-400" />
                     <span className="text-xs font-mono uppercase text-slate-400 font-bold">
                       Node Telemetry
                     </span>

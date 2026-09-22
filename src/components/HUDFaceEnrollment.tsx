@@ -1,10 +1,29 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { ScanFace, Camera, CheckCircle2, XCircle, Trash2, ShieldCheck } from 'lucide-react';
-import { globalFaceAuthManager } from '../services/FaceAuthManager';
+import { globalFaceAuthManager, FaceError } from '../services/FaceAuthManager';
 
 interface HUDFaceEnrollmentProps {
   isOpen: boolean;
   onClose: () => void;
+}
+
+/** Map typed face errors to accurate, non-technical UI messages. */
+function faceErrorMessage(e: any, fallback: string): string {
+  if (e instanceof FaceError) {
+    switch (e.code) {
+      case 'MODEL_LOAD_ERROR':
+        return 'Face models load nahi ho paye: ' + e.message;
+      case 'MODEL_INFERENCE_ERROR':
+        return 'Camera verification temporarily failed. Please try again.';
+      case 'FRAME_NOT_READY':
+        return e.message;
+      case 'FACE_NOT_DETECTED':
+        return 'Face not detected. Please position your face inside the frame.';
+      default:
+        return e.message || fallback;
+    }
+  }
+  return (e?.message || fallback).toString();
 }
 
 export function HUDFaceEnrollment({ isOpen, onClose }: HUDFaceEnrollmentProps) {
@@ -17,43 +36,101 @@ export function HUDFaceEnrollment({ isOpen, onClose }: HUDFaceEnrollmentProps) {
   const [msgOk, setMsgOk] = useState(true);
   const [enrolled, setEnrolled] = useState(globalFaceAuthManager.isEnrolled());
   const [threshold, setThreshold] = useState(globalFaceAuthManager.getThreshold());
+  const [loadAttempt, setLoadAttempt] = useState(0);
+  const [loadFailed, setLoadFailed] = useState(false);
   const descriptorsRef = useRef<Float32Array[]>([]);
+  const initRunRef = useRef(0);
 
   useEffect(() => {
     if (!isOpen) {
       stopCamera();
+      setLoadFailed(false);
+      setMsg('');
       return;
     }
+    const runId = ++initRunRef.current;
+    const alive = () => initRunRef.current === runId && isOpen;
     setMsg('');
+    setLoadFailed(false);
     setSamples(0);
     descriptorsRef.current = [];
     setEnrolled(globalFaceAuthManager.isEnrolled());
     (async () => {
+      // Phase 1 — model loading (errors here are MODEL errors, never camera).
       try {
         setStatus('Face models load ho rahe hain (~5MB, pehli baar)...');
         await globalFaceAuthManager.loadModels();
+      } catch (e: any) {
+        if (!alive()) return;
+        setStatus('');
+        setMsg(faceErrorMessage(e, 'Face models load nahi ho paye. Dobara try karo.'));
+        setMsgOk(false);
+        // Real retry path: failed state is clean (loader reset its promise),
+        // the button below re-runs verification + reload from scratch.
+        setLoadFailed(e instanceof FaceError && e.code === 'MODEL_LOAD_ERROR');
+        return;
+      }
+      // Phase 2 — camera (only reached when models are ready).
+      try {
+        if (!alive()) return;
         setStatus('Camera on kar rahe hain...');
         const stream = await navigator.mediaDevices.getUserMedia({
           video: { width: { ideal: 640 }, height: { ideal: 480 }, facingMode: 'user' },
         });
+        if (!alive()) {
+          stream.getTracks().forEach((t) => t.stop());
+          return;
+        }
         streamRef.current = stream;
         if (videoRef.current) {
           videoRef.current.srcObject = stream;
-          await videoRef.current.play();
+          // Wait for real pixels before declaring ready (no empty frames).
+          await new Promise<void>((resolve, reject) => {
+            const v = videoRef.current!;
+            if (v.readyState >= 2 && v.videoWidth > 0) return resolve();
+            const to = setTimeout(() => reject(new Error('video timeout')), 10000);
+            v.onloadeddata = () => {
+              if (v.videoWidth > 0) {
+                clearTimeout(to);
+                resolve();
+              }
+            };
+          });
+          await videoRef.current.play().catch(() => {});
         }
+        if (!alive()) return;
         setStatus('Chehra seedha camera me rakho, roshni chehre pe ho.');
       } catch (e: any) {
+        if (!alive()) return;
         setStatus('');
-        setMsg('Camera nahi khul paya: ' + (e?.message || 'permission denied'));
+        const name = e?.name || '';
+        if (name === 'NotAllowedError' || name === 'SecurityError') {
+          setMsg('Camera permission denied hai. Settings me camera allow karo.');
+        } else if (name === 'NotFoundError' || name === 'OverconstrainedError') {
+          setMsg('Camera available nahi hai is device par.');
+        } else {
+          setMsg('Camera start nahi ho paya: ' + (e?.message || 'unknown error'));
+        }
         setMsgOk(false);
+        stopCamera();
       }
     })();
     return () => stopCamera();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [isOpen]);
+  }, [isOpen, loadAttempt]);
 
   const stopCamera = () => {
-    streamRef.current?.getTracks().forEach((t) => t.stop());
+    initRunRef.current++;
+    try {
+      if (videoRef.current) {
+        try { videoRef.current.pause(); } catch {}
+        (videoRef.current as any).srcObject = null;
+        videoRef.current.onloadeddata = null;
+      }
+    } catch {}
+    streamRef.current?.getTracks().forEach((t) => {
+      try { t.stop(); } catch {}
+    });
     streamRef.current = null;
   };
 
@@ -90,7 +167,7 @@ export function HUDFaceEnrollment({ isOpen, onClose }: HUDFaceEnrollmentProps) {
         }
       }
     } catch (e: any) {
-      setMsg('Error: ' + (e?.message || 'capture failed'));
+      setMsg(faceErrorMessage(e, 'Error: capture failed'));
       setMsgOk(false);
     }
     setBusy(false);
@@ -110,7 +187,7 @@ export function HUDFaceEnrollment({ isOpen, onClose }: HUDFaceEnrollmentProps) {
         setMsgOk(r.verified);
       }
     } catch (e: any) {
-      setMsg('Error: ' + (e?.message || 'verify failed'));
+      setMsg(faceErrorMessage(e, 'Error: verify failed'));
       setMsgOk(false);
     }
     setBusy(false);
@@ -131,7 +208,7 @@ export function HUDFaceEnrollment({ isOpen, onClose }: HUDFaceEnrollmentProps) {
         <div className="rounded-xl overflow-hidden border border-slate-700 bg-black aspect-[4/3] flex items-center justify-center">
           <video ref={videoRef} muted playsInline className="w-full h-full object-cover" />
         </div>
-        {status && <p className="text-xs text-cyan-300 font-mono mt-2">{status}</p>}
+        {status && <p className="text-xs text-amber-300 font-mono mt-2">{status}</p>}
 
         <div className="flex gap-2 mt-3">
           <button
@@ -153,9 +230,20 @@ export function HUDFaceEnrollment({ isOpen, onClose }: HUDFaceEnrollmentProps) {
         </div>
 
         {msg && (
-          <div className={`mt-3 p-3 rounded-xl text-sm flex items-start gap-2 ${msgOk ? 'bg-green-500/10 border border-green-500/30 text-green-200' : 'bg-red-500/10 border border-red-500/30 text-red-200'}`}>
-            {msgOk ? <CheckCircle2 className="w-5 h-5 shrink-0" /> : <XCircle className="w-5 h-5 shrink-0" />}
-            <span>{msg}</span>
+          <div className={`mt-3 p-3 rounded-xl text-sm flex flex-col gap-2 ${msgOk ? 'bg-green-500/10 border border-green-500/30 text-green-200' : 'bg-red-500/10 border border-red-500/30 text-red-200'}`}>
+            <div className="flex items-start gap-2">
+              {msgOk ? <CheckCircle2 className="w-5 h-5 shrink-0" /> : <XCircle className="w-5 h-5 shrink-0" />}
+              <span>{msg}</span>
+            </div>
+            {loadFailed && !msgOk && (
+              <button
+                type="button"
+                onClick={() => setLoadAttempt((n) => n + 1)}
+                className="self-start px-4 py-2 min-h-[44px] rounded-xl bg-violet-500 hover:bg-violet-400 text-white text-xs font-bold"
+              >
+                Dobara try karo
+              </button>
+            )}
           </div>
         )}
 

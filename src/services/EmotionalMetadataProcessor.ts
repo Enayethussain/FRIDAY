@@ -18,7 +18,7 @@ export const TONE_PROFILES: Record<EmotionalTone, ToneProfile> = {
     arousal: 0.3,
     glowIntensity: 1.0,
     pulseFrequency: 1.0,
-    ambientColor: '#06b6d4', // Cyan
+    ambientColor: '#FFC400', // Cyan
     label: 'EQUILIBRIUM',
     summary: 'Balanced cybernetic baseline',
   },
@@ -98,7 +98,7 @@ export class EmotionalMetadataProcessor {
   private targetFrequency: number = 1.0;
   private currentFrequency: number = 1.0;
 
-  private ambientColor: string = '#06b6d4';
+  private ambientColor: string = '#FFC400';
   private label: string = 'EQUILIBRIUM';
   private summary: string = 'Balanced cybernetic baseline';
 

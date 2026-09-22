@@ -1,0 +1,10 @@
+Note: Some input files use unchecked or unsafe operations.
+Note: Recompile with -Xlint:unchecked for details.
+Note: A:\MD ENAYET HUSSAIN\Jarvis\node_modules\@capacitor-community\text-to-speech\android\src\main\java\com\getcapacitor\community\tts\TextToSpeech.java uses or overrides a deprecated API.
+Note: Recompile with -Xlint:deprecation for details.
+Note: A:\MD ENAYET HUSSAIN\Jarvis\node_modules\@capacitor-community\text-to-speech\android\src\main\java\com\getcapacitor\community\tts\TextToSpeech.java uses unchecked or unsafe operations.
+Note: Recompile with -Xlint:unchecked for details.
+Note: A:\MD ENAYET HUSSAIN\Jarvis\node_modules\@capacitor\camera\android\src\main\java\com\capacitorjs\plugins\camera\CameraBottomSheetDialogFragment.java uses unchecked or unsafe operations.
+Note: Recompile with -Xlint:unchecked for details.
+Note: Some input files use or override a deprecated API.
+Note: Recompile with -Xlint:deprecation for details.

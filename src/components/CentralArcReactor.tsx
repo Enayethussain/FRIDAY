@@ -20,7 +20,7 @@ export const CentralArcReactor: React.FC<CentralArcReactorProps> = ({
   emotionalMetadata,
   onOpenEmotionalDiagnostics,
 }) => {
-  const currentTheme = THEMES[theme] || THEMES.cyan;
+  const currentTheme = THEMES[theme] || THEMES.amber;
 
   const isConnected = state === 'listening' || state === 'speaking';
   const isConnecting = state === 'connecting' || isLoading;
@@ -164,10 +164,10 @@ export const CentralArcReactor: React.FC<CentralArcReactorProps> = ({
         onClick={onToggle}
         disabled={isConnecting}
         aria-label={isConnected ? 'Disconnect voice session' : 'Connect voice session'}
-        className={`group relative z-10 w-32 h-32 sm:w-40 sm:h-40 rounded-full flex flex-col items-center justify-center transition-all duration-500 focus:outline-none focus:ring-4 focus:ring-offset-2 focus:ring-offset-[#05070f] active:scale-95 cursor-pointer ${
+        className={`group relative z-10 w-32 h-32 sm:w-40 sm:h-40 rounded-full flex flex-col items-center justify-center transition-all duration-500 focus:outline-none focus:ring-4 focus:ring-offset-2 focus:ring-offset-[#030405] active:scale-95 cursor-pointer ${
           isConnected
             ? `bg-gradient-to-b from-[#0e1628] to-[#080d19] border-2`
-            : `bg-gradient-to-b from-[#0f172a]/90 to-[#020617]/90 border border-slate-700/60 hover:border-slate-500 shadow-xl hover:shadow-[0_0_30px_rgba(6,182,212,0.2)]`
+             : `bg-gradient-to-b from-[#0f172a]/90 to-[#020617]/90 border border-slate-700/60 hover:border-slate-500 shadow-xl hover:shadow-[0_0_30px_rgba(255,196,0,0.2)]`
         }`}
         style={{
           borderColor: isConnected ? ambientColor : undefined,
@@ -201,7 +201,7 @@ export const CentralArcReactor: React.FC<CentralArcReactorProps> = ({
           ) : isListening ? (
             <Mic className="w-8 h-8 sm:w-10 sm:h-10 text-slate-950 animate-pulse" />
           ) : (
-            <Power className="w-8 h-8 sm:w-10 sm:h-10 text-slate-400 group-hover:text-cyan-400 transition-colors" />
+            <Power className="w-8 h-8 sm:w-10 sm:h-10 text-slate-400 group-hover:text-amber-400 transition-colors" />
           )}
         </div>
 

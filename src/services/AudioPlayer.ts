@@ -12,7 +12,7 @@ export class AudioPlayer {
   private activeSources: AudioBufferSourceNode[] = [];
   private onPlayingStateChange: ((isPlaying: boolean) => void) | null = null;
   private drainTimeout: any = null;
-  private audioQueue: string[] = [];
+  private audioQueue: AudioBuffer[] = [];
   private isProcessingQueue: boolean = false;
   private minBufferSize: number = 1;
   private maxBufferSize: number = 3;

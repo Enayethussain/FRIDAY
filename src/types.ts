@@ -145,7 +145,7 @@ export interface UserProfile {
 
 export interface WakewordConfig {
   enabled: boolean;
-  keyword: string; // e.g., 'hey friday', 'friday', 'myraa', 'jarvis'
+  keyword: string; // e.g., 'hey jarvis', 'jarvis', 'myraa', 'jarvis'
   autoConnectOnWake: boolean;
   audioFeedback: boolean;
 }
@@ -252,7 +252,7 @@ export interface KnowledgeGraphLink {
 }
 
 // Feature 5: Session Debrief & Transcript Exporter
-export type TranscriptSender = 'user' | 'friday' | 'system' | 'tool';
+export type TranscriptSender = 'user' | 'jarvis' | 'system' | 'tool';
 
 export interface TranscriptEntry {
   id: string;
@@ -305,6 +305,40 @@ export interface CommanderPreference {
   description: string;
   intensity: 'favorite' | 'strong' | 'moderate';
   createdAt: number;
+}
+
+// Universal 3D Hologram Generator Types
+export type HologramStatus = 'idle' | 'resolving' | 'loading' | 'active' | 'error';
+
+export type HologramControlAction =
+  | 'rotate_left' | 'rotate_right' | 'rotate_deg'
+  | 'zoom_in' | 'zoom_out'
+  | 'move_up' | 'move_down' | 'move_left' | 'move_right'
+  | 'reset' | 'spin_start' | 'spin_stop'
+  | 'bigger' | 'smaller' | 'hide' | 'close'
+  | 'view_holo' | 'view_solid' | 'view_wire' | 'view_xray'
+  | 'labels_show' | 'labels_hide'
+  | 'anim_play' | 'anim_pause' | 'anim_restart'
+  | 'quality_low' | 'quality_med' | 'quality_high'
+  | 'sync_on' | 'sync_off';
+
+export interface HologramState {
+  isOpen: boolean;
+  /** raw user request, e.g. "human heart" */
+  object: string;
+  entryId: string;
+  label: string;
+  category: string;
+  kind: 'procedural' | 'local' | 'external' | 'upload';
+  isApproximation: boolean;
+  note: string;
+  status: HologramStatus;
+  error?: string;
+  modelUrl?: string;
+  format?: 'glb' | 'gltf' | 'obj';
+  progress?: number;
+  /** requested quality: low = reduced-poly procedural / cheaper route */
+  quality?: 'auto' | 'low' | 'high';
 }
 
 // Stark Scientific Calculator Types

@@ -10,7 +10,7 @@ interface HUDWorkspaceStatusProps {
 }
 
 export const HUDWorkspaceStatus: React.FC<HUDWorkspaceStatusProps> = ({ theme }) => {
-  const currentTheme = THEMES[theme] || THEMES.cyan;
+  const currentTheme = THEMES[theme] || THEMES.amber;
   const [isConnected, setIsConnected] = useState(false);
   const [isHovered, setIsHovered] = useState(false);
 
@@ -53,7 +53,7 @@ export const HUDWorkspaceStatus: React.FC<HUDWorkspaceStatusProps> = ({ theme })
           <div className="absolute top-full right-0 mt-2 p-2 bg-slate-900 border border-slate-700 rounded-lg shadow-xl z-50 flex flex-col gap-2 min-w-[150px] animate-in fade-in">
             <div className="text-[10px] text-slate-400 font-mono text-center">Connected Apps</div>
             <div className="flex items-center gap-2 text-xs text-slate-200">
-               <Calendar className="w-3.5 h-3.5 text-blue-400" /> Google Calendar
+               <Calendar className="w-3.5 h-3.5 text-amber-400" /> Google Calendar
             </div>
             <div className="flex items-center gap-2 text-xs text-slate-200">
                <Mail className="w-3.5 h-3.5 text-red-400" /> Gmail

@@ -11,30 +11,30 @@ interface FridayNexusCoreProps {
 }
 
 /**
- * FridayNexusCore — JARVIS NEXUS UI ported to FRIDAY.
- * Names: JARVIS -> FRIDAY, NEXUS AI -> FRIDAY NEXUS, MATAKAL -> FRIDAY.
- * No eel.js / three.js CDN — pure SVG + CSS core wired to FRIDAY state.
+ * FridayNexusCore — JARVIS NEXUS UI ported to JARVIS.
+ * Names: JARVIS -> JARVIS, NEXUS AI -> JARVIS NEXUS, MATAKAL -> JARVIS.
+ * No eel.js / three.js CDN — pure SVG + CSS core wired to JARVIS state.
  */
 export const FridayNexusCore: React.FC<FridayNexusCoreProps> = ({
   state,
   theme,
   onToggle,
   typingText,
-  title = 'FRIDAY',
+  title = 'JARVIS',
 }) => {
-  const currentTheme = THEMES[theme] || THEMES.cyan;
+  const currentTheme = THEMES[theme] || THEMES.amber;
   const accent = currentTheme.primary;
   const isActive = state === 'listening' || state === 'speaking';
   const isSpeaking = state === 'speaking';
 
   const defaultLine =
     state === 'disconnected'
-      ? 'Hello Commander, I am Friday. Tap the core to awaken me.'
+      ? 'Good day, Sir. I am Jarvis. Tap the core to awaken me.'
       : state === 'connecting'
         ? 'Initializing quantum speech channel...'
         : state === 'listening'
-          ? 'Friday is listening. Speak, Commander.'
-          : 'Friday is speaking. Interrupt anytime.';
+          ? 'Jarvis is listening, Sir. Speak.'
+          : 'Jarvis is speaking. Interrupt anytime.';
 
   const [typed, setTyped] = useState('');
   useEffect(() => {
@@ -67,7 +67,7 @@ export const FridayNexusCore: React.FC<FridayNexusCoreProps> = ({
         }
         .fnx-stage { position: relative; width: 300px; height: 300px; display: flex; align-items: center; justify-content: center; }
         .fnx-svg { position: absolute; inset: 0; width: 100%; height: 100%; }
-        .fnx-blue-light { position: absolute; width: 150px; height: 150px; background: radial-gradient(circle, var(--fnx-accent) 0%, rgba(0,0,0,0) 70%); border-radius: 50%; opacity: 0; animation: fnxLight 3s ease-in-out infinite; }
+        .fnx-amber-light { position: absolute; width: 150px; height: 150px; background: radial-gradient(circle, var(--fnx-accent) 0%, rgba(0,0,0,0) 70%); border-radius: 50%; opacity: 0; animation: fnxLight 3s ease-in-out infinite; }
         @keyframes fnxLight { 0% { opacity: 0; transform: scale(0); } 50% { opacity: 1; transform: scale(1.5); } 100% { opacity: 0; transform: scale(2); } }
         .fnx-circle { position: absolute; width: 250px; height: 250px; border: 4px solid var(--fnx-accent); border-radius: 50%; opacity: 0; animation: fnxAppear 3s 1s forwards; box-shadow: 0 0 20px rgb(106,0,255), 0 0 40px var(--fnx-accent); }
         @keyframes fnxAppear { 0% { opacity: 0; transform: scale(0.5); } 100% { opacity: 1; transform: scale(1); } }
@@ -127,11 +127,11 @@ export const FridayNexusCore: React.FC<FridayNexusCoreProps> = ({
             <animate attributeName="r" values="35; 40; 35" dur={isSpeaking ? '0.8s' : '2s'} repeatCount="indefinite" />
           </circle>
           <text x="50%" y="50%" dominantBaseline="middle" textAnchor="middle" fill="#ebdfe9da" fontFamily="Orbitron, sans-serif" fontSize="35" fontWeight="bold" letterSpacing="1">
-            FRIDAY
+            JARVIS
           </text>
         </svg>
 
-        <div className="fnx-blue-light" style={{ opacity: isActive ? undefined : 0 }} />
+        <div className="fnx-amber-light" style={{ opacity: isActive ? undefined : 0 }} />
         <div className="fnx-circle" />
         <div className="fnx-ring" />
         <div className="fnx-ring r2" />
@@ -144,12 +144,12 @@ export const FridayNexusCore: React.FC<FridayNexusCoreProps> = ({
         </div>
 
         <div className="fnx-orbit" />
-        <button type="button" className="fnx-core-btn" onClick={onToggle} aria-label="Toggle Friday voice session" title="Touch reactor core to awaken Friday">
+        <button type="button" className="fnx-core-btn" onClick={onToggle} aria-label="Toggle Jarvis voice session" title="Touch reactor core to awaken Jarvis">
           <span>{title}</span>
           <small>{state === 'connecting' ? 'SYNCING' : isSpeaking ? 'TALKING' : state === 'listening' ? 'ONLINE' : 'ACTIVATE'}</small>
         </button>
 
-        <div className="fnx-glow-text">Friday</div>
+        <div className="fnx-glow-text">Jarvis</div>
         <div className="fnx-typing">{typed}</div>
       </div>
     </div>

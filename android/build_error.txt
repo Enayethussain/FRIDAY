@@ -1,0 +1,28 @@
+A:\MD ENAYET HUSSAIN\Jarvis\android\app\src\main\java\com\jarvis\ai\plugins\PhonePlugin.java:32: error: cannot find symbol
+    @com.getcapacitor.PluginPermission(strings = {Manifest.permission.READ_CONTACTS, Manifest.permission.READ_PHONE_STATE, Manifest.permission.READ_CALL_LOG, Manifest.permission.READ_SMS, Manifest.permission.SEND_SMS})
+                     ^
+  symbol:   class PluginPermission
+  location: package com.getcapacitor
+Note: Some input files use or override a deprecated API.
+Note: Recompile with -Xlint:deprecation for details.
+1 error
+
+FAILURE: Build failed with an exception.
+
+* What went wrong:
+Execution failed for task ':app:compileDebugJavaWithJavac'.
+> Compilation failed; see the compiler output below.
+  Note: Recompile with -Xlint:deprecation for details.
+  A:\MD ENAYET HUSSAIN\Jarvis\android\app\src\main\java\com\jarvis\ai\plugins\PhonePlugin.java:32: error: cannot find symbol
+      @com.getcapacitor.PluginPermission(strings = {Manifest.permission.READ_CONTACTS, Manifest.permission.READ_PHONE_STATE, Manifest.permission.READ_CALL_LOG, Manifest.permission.READ_SMS, Manifest.permission.SEND_SMS})
+                       ^
+    symbol:   class PluginPermission
+    location: package com.getcapacitor
+  Note: Some input files use or override a deprecated API.
+  1 error
+
+* Try:
+> Check your code and dependencies to fix the compilation error(s)
+> Run with --scan to get full insights.
+
+BUILD FAILED in 3m 52s

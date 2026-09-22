@@ -2,10 +2,10 @@ import { apiUrl } from '../lib/serverUrl';
 import { globalDeviceLink } from './DeviceLinkManager';
 
 /**
- * CloudSyncManager — FRIDAY CLOUD architecture:
+ * CloudSyncManager — JARVIS CLOUD architecture:
  *   CLOUD/BACKEND (central: Live WS + Gemini + relay + sync bucket)
- *     ├── Android (complete FRIDAY)
- *     └── PC (complete FRIDAY)
+ *     ├── Android (complete JARVIS)
+ *     └── PC (complete JARVIS)
  *   Pair hone par dono ka syncRoom same -> notes/tasks/curriculum/routines auto shared.
  *
  * Memories already Firebase (Google login) se shared hain.

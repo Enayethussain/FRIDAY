@@ -36,7 +36,7 @@ export const HUDProtocolManager: React.FC<HUDProtocolManagerProps> = ({
   onSetTimer,
   onActionCard,
 }) => {
-  const currentTheme = THEMES[theme] || THEMES.cyan;
+  const currentTheme = THEMES[theme] || THEMES.amber;
   const [selectedProtocolId, setSelectedProtocolId] = useState<ProtocolId>('morning_briefing');
   const [executing, setExecuting] = useState<boolean>(false);
   const [activeStepIndex, setActiveStepIndex] = useState<number>(-1);
@@ -56,9 +56,9 @@ export const HUDProtocolManager: React.FC<HUDProtocolManagerProps> = ({
       case 'Flame':
         return <Flame className="w-5 h-5 text-rose-500" />;
       case 'Moon':
-        return <Moon className="w-5 h-5 text-cyan-400" />;
+        return <Moon className="w-5 h-5 text-amber-400" />;
       default:
-        return <Shield className="w-5 h-5 text-cyan-400" />;
+        return <Shield className="w-5 h-5 text-amber-400" />;
     }
   };
 
@@ -166,7 +166,7 @@ export const HUDProtocolManager: React.FC<HUDProtocolManagerProps> = ({
                   }}
                   className={`p-3 rounded-xl border text-left transition-all cursor-pointer ${
                     isSelected
-                      ? 'bg-slate-900 border-cyan-500/60 shadow-[0_0_15px_rgba(6,182,212,0.15)]'
+                      ? 'bg-slate-900 border-amber-500/60 shadow-[0_0_15px_rgba(255,196,0,0.15)]'
                       : 'bg-slate-950/60 border-slate-800/80 hover:bg-slate-900/80 hover:border-slate-700'
                   }`}
                 >
@@ -178,7 +178,7 @@ export const HUDProtocolManager: React.FC<HUDProtocolManagerProps> = ({
                       <div className="text-xs font-mono font-bold text-white">
                         {proto.name}
                       </div>
-                      <div className="text-[10px] font-mono uppercase tracking-wider text-cyan-400/90 font-semibold">
+                      <div className="text-[10px] font-mono uppercase tracking-wider text-amber-400/90 font-semibold">
                         {proto.callsign}
                       </div>
                     </div>
@@ -197,7 +197,7 @@ export const HUDProtocolManager: React.FC<HUDProtocolManagerProps> = ({
               {/* Header Info */}
               <div className="flex items-start justify-between mb-4 pb-4 border-b border-slate-800">
                 <div>
-                  <span className="text-[10px] font-mono text-cyan-400 uppercase tracking-widest block mb-1">
+                  <span className="text-[10px] font-mono text-amber-400 uppercase tracking-widest block mb-1">
                     AUTONOMOUS DIRECTIVE // {selectedProtocol.callsign}
                   </span>
                   <h4 className="text-lg font-mono font-bold text-white">
@@ -240,7 +240,7 @@ export const HUDProtocolManager: React.FC<HUDProtocolManagerProps> = ({
                         isDone
                           ? 'bg-emerald-950/20 border-emerald-500/40 text-emerald-300'
                           : isCurrent
-                          ? 'bg-cyan-950/40 border-cyan-500 text-cyan-200 shadow-[0_0_15px_rgba(6,182,212,0.2)]'
+                          ? 'bg-amber-950/40 border-amber-500 text-amber-200 shadow-[0_0_15px_rgba(255,196,0,0.2)]'
                           : 'bg-black/30 border-slate-800/80 text-slate-400'
                       }`}
                     >
@@ -248,7 +248,7 @@ export const HUDProtocolManager: React.FC<HUDProtocolManagerProps> = ({
                         {isDone ? (
                           <CheckCircle2 className="w-4 h-4 text-emerald-400" />
                         ) : isCurrent ? (
-                          <div className="w-4 h-4 rounded-full border-2 border-cyan-400 border-t-transparent animate-spin" />
+                          <div className="w-4 h-4 rounded-full border-2 border-amber-400 border-t-transparent animate-spin" />
                         ) : (
                           <span className="w-4 h-4 rounded-full bg-slate-800 text-[10px] font-mono flex items-center justify-center text-slate-400">
                             {idx + 1}
@@ -263,8 +263,8 @@ export const HUDProtocolManager: React.FC<HUDProtocolManagerProps> = ({
 
               {/* Spoken / Terminal Result Message */}
               {protocolResult && (
-                <div className="p-3.5 rounded-xl bg-cyan-950/20 border border-cyan-500/40 animate-in fade-in">
-                  <div className="flex items-center gap-2 text-[10px] font-mono uppercase tracking-wider text-cyan-400 font-bold mb-1">
+                <div className="p-3.5 rounded-xl bg-amber-950/20 border border-amber-500/40 animate-in fade-in">
+                  <div className="flex items-center gap-2 text-[10px] font-mono uppercase tracking-wider text-amber-400 font-bold mb-1">
                     <Terminal className="w-3.5 h-3.5" />
                     <span>Directive Execution Debrief</span>
                   </div>
@@ -278,7 +278,7 @@ export const HUDProtocolManager: React.FC<HUDProtocolManagerProps> = ({
             {/* Bottom Voice Command Helper */}
             <div className="mt-4 pt-3 border-t border-slate-800/80 flex items-center justify-between text-[11px] font-mono text-slate-400">
               <span>Voice activation enabled: "FRIDAY, initiate Protocol Clean Slate"</span>
-              <span className="text-cyan-400 font-bold">ARC REACTOR COMPATIBLE</span>
+              <span className="text-amber-400 font-bold">ARC REACTOR COMPATIBLE</span>
             </div>
           </div>
         </div>

@@ -38,7 +38,7 @@ export const HUDFileVault: React.FC<HUDFileVaultProps> = ({
   const [selectedFile, setSelectedFile] = useState<PCFileItem | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
   const fileInputRef = useRef<HTMLInputElement | null>(null);
-  const currentTheme = THEMES[theme] || THEMES.cyan;
+  const currentTheme = THEMES[theme] || THEMES.amber;
 
   if (!isOpen) return null;
 
@@ -80,7 +80,7 @@ export const HUDFileVault: React.FC<HUDFileVaultProps> = ({
     if (['png', 'jpg', 'jpeg', 'webp', 'svg', 'gif'].includes(e) || type.startsWith('image/')) {
       return <FileImage className="w-5 h-5 text-violet-400" />;
     }
-    return <FileText className="w-5 h-5 text-sky-400" />;
+    return <FileText className="w-5 h-5 text-amber-400" />;
   };
 
   const filteredFiles = files.filter(
@@ -153,7 +153,7 @@ export const HUDFileVault: React.FC<HUDFileVaultProps> = ({
               onClick={() => fileInputRef.current?.click()}
               className={`p-4 rounded-xl border-2 border-dashed transition-all text-center cursor-pointer mb-3 flex flex-col items-center justify-center gap-1.5 ${
                 isDragging
-                  ? 'border-cyan-400 bg-cyan-950/30 shadow-lg scale-[1.01]'
+                  ? 'border-amber-400 bg-amber-950/30 shadow-lg scale-[1.01]'
                   : 'border-slate-700/80 hover:border-slate-500 bg-slate-900/40 hover:bg-slate-900/70'
               }`}
               style={{
@@ -193,7 +193,7 @@ export const HUDFileVault: React.FC<HUDFileVaultProps> = ({
                 placeholder="Search uploaded files..."
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                className="w-full pl-8 pr-3 py-1.5 rounded-lg bg-slate-900/80 border border-slate-800 text-xs font-mono text-slate-100 placeholder-slate-500 focus:outline-none focus:border-cyan-500"
+                className="w-full pl-8 pr-3 py-1.5 rounded-lg bg-slate-900/80 border border-slate-800 text-xs font-mono text-slate-100 placeholder-slate-500 focus:outline-none focus:border-amber-500"
               />
             </div>
 
@@ -216,7 +216,7 @@ export const HUDFileVault: React.FC<HUDFileVaultProps> = ({
                       onClick={() => setSelectedFile(file)}
                       className={`p-3 rounded-xl border flex items-center justify-between gap-3 transition-all cursor-pointer group ${
                         isSelected
-                          ? 'bg-slate-800/90 border-cyan-500/80 shadow-md'
+                          ? 'bg-slate-800/90 border-amber-500/80 shadow-md'
                           : 'bg-[#0c1322] border-slate-800 hover:bg-slate-800/50 hover:border-slate-700'
                       }`}
                       style={{

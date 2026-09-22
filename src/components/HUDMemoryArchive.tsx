@@ -59,7 +59,7 @@ export const HUDMemoryArchive: React.FC<HUDMemoryArchiveProps> = ({
 
   if (!isOpen) return null;
 
-  const currentTheme = THEMES[theme] || THEMES.cyan;
+  const currentTheme = THEMES[theme] || THEMES.amber;
 
   const filteredMemories = memories.filter((m) => {
     if (selectedCategory !== 'all' && m.category !== selectedCategory) {
@@ -172,7 +172,7 @@ export const HUDMemoryArchive: React.FC<HUDMemoryArchiveProps> = ({
                   placeholder="e.g. Favorite Coding Language"
                   value={newKey}
                   onChange={(e) => setNewKey(e.target.value)}
-                  className="w-full bg-slate-900 border border-slate-700 rounded-lg px-2.5 py-1.5 text-xs font-mono text-slate-100 placeholder-slate-500 focus:outline-none focus:border-cyan-400"
+                  className="w-full bg-slate-900 border border-slate-700 rounded-lg px-2.5 py-1.5 text-xs font-mono text-slate-100 placeholder-slate-500 focus:outline-none focus:border-amber-400"
                 />
               </div>
 
@@ -183,7 +183,7 @@ export const HUDMemoryArchive: React.FC<HUDMemoryArchiveProps> = ({
                 <select
                   value={newCategory}
                   onChange={(e) => setNewCategory(e.target.value as any)}
-                  className="w-full bg-slate-900 border border-slate-700 rounded-lg px-2.5 py-1.5 text-xs font-mono text-slate-100 focus:outline-none focus:border-cyan-400"
+                  className="w-full bg-slate-900 border border-slate-700 rounded-lg px-2.5 py-1.5 text-xs font-mono text-slate-100 focus:outline-none focus:border-amber-400"
                 >
                   <option value="identity">Identity</option>
                   <option value="preference">Preference</option>
@@ -201,7 +201,7 @@ export const HUDMemoryArchive: React.FC<HUDMemoryArchiveProps> = ({
                 <select
                   value={newImportance}
                   onChange={(e) => setNewImportance(e.target.value as any)}
-                  className="w-full bg-slate-900 border border-slate-700 rounded-lg px-2.5 py-1.5 text-xs font-mono text-slate-100 focus:outline-none focus:border-cyan-400"
+                  className="w-full bg-slate-900 border border-slate-700 rounded-lg px-2.5 py-1.5 text-xs font-mono text-slate-100 focus:outline-none focus:border-amber-400"
                 >
                   <option value="critical">Critical</option>
                   <option value="high">High</option>
@@ -220,7 +220,7 @@ export const HUDMemoryArchive: React.FC<HUDMemoryArchiveProps> = ({
                 placeholder="What should FRIDAY remember permanently across voice calls?"
                 value={newContent}
                 onChange={(e) => setNewContent(e.target.value)}
-                className="w-full bg-slate-900 border border-slate-700 rounded-lg px-2.5 py-1.5 text-xs font-mono text-slate-100 placeholder-slate-500 focus:outline-none focus:border-cyan-400 resize-none"
+                className="w-full bg-slate-900 border border-slate-700 rounded-lg px-2.5 py-1.5 text-xs font-mono text-slate-100 placeholder-slate-500 focus:outline-none focus:border-amber-400 resize-none"
               />
             </div>
 

@@ -23,7 +23,7 @@ const VOICE_PROMPTS = [
 
 export const HUDFooter: React.FC<HUDFooterProps> = ({ state, theme }) => {
   const [promptIndex, setPromptIndex] = useState(0);
-  const currentTheme = THEMES[theme] || THEMES.cyan;
+  const currentTheme = THEMES[theme] || THEMES.amber;
 
   useEffect(() => {
     const interval = setInterval(() => {
@@ -35,7 +35,12 @@ export const HUDFooter: React.FC<HUDFooterProps> = ({ state, theme }) => {
   return (
     <footer
       id="hud-footer"
-      className="w-full px-4 sm:px-6 py-3 border-t border-slate-800/60 bg-[#05070f]/80 backdrop-blur-md z-20 flex flex-col sm:flex-row items-center justify-between gap-3 text-xs font-mono"
+      className="w-full px-4 sm:px-6 py-3 border-t border-slate-800/60 bg-[#030405]/80 backdrop-blur-md z-20 flex flex-col sm:flex-row items-center justify-between gap-3 text-xs font-mono"
+      style={{
+        paddingBottom: 'max(0.75rem, env(safe-area-inset-bottom, 0px))',
+        paddingLeft: 'max(1rem, env(safe-area-inset-left, 0px))',
+        paddingRight: 'max(1rem, env(safe-area-inset-right, 0px))',
+      }}
     >
       {/* Dynamic Voice Prompt Rotation */}
       <div className="flex items-center gap-2 max-w-md w-full truncate">
@@ -49,8 +54,8 @@ export const HUDFooter: React.FC<HUDFooterProps> = ({ state, theme }) => {
         </span>
       </div>
 
-      {/* Protocol Telemetry Indicators */}
-      <div className="flex items-center gap-3 shrink-0 text-[11px] text-slate-400">
+      {/* Protocol Telemetry Indicators (desktop only — main-screen declutter) */}
+      <div className="hidden sm:flex items-center gap-3 shrink-0 text-[11px] text-slate-400">
         <div className="flex items-center gap-1.5">
           <span className="w-1.5 h-1.5 rounded-full bg-emerald-400" />
           <span>IN: 16kHz PCM</span>

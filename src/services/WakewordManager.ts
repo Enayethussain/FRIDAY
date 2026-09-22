@@ -68,7 +68,10 @@ export class WakewordManager {
       this.recognition = new SpeechRecognition();
       this.recognition.continuous = true;
       this.recognition.interimResults = true;
-      this.recognition.lang = 'en-US';
+      // en-IN understands English + Hinglish/Hindi-transliterated speech far
+      // better than en-US on this target hardware; Devanagari Hindi is also
+      // matched via transliterated triggers below (e.g. "friday" inside Hindi).
+      this.recognition.lang = 'en-IN';
 
       this.recognition.onstart = () => {
         this.state = {
@@ -92,6 +95,23 @@ export class WakewordManager {
         // 'no-speech' is routine in background speech recognition
         if (event.error !== 'no-speech') {
           console.warn('[Wakeword] Recognition event notice:', event.error);
+        }
+        if (event.error === 'not-allowed' || event.error === 'service-not-allowed') {
+          // Mic blocked: stop auto-restart loop and say the real reason.
+          this.shouldBeListening = false;
+          clearTimeout(this.restartTimeout);
+          this.state = {
+            ...this.state,
+            isListening: false,
+            statusMessage: 'Microphone blocked — browser Settings me mic permission do, phir wakeword ON karo.',
+          };
+          this.notify();
+        } else if (event.error === 'audio-capture') {
+          this.state = {
+            ...this.state,
+            statusMessage: 'Microphone busy/unavailable — doosri app mic use kar rahi hogi.',
+          };
+          this.notify();
         }
       };
 
@@ -130,13 +150,19 @@ export class WakewordManager {
 
   private checkTranscriptForWakeword(transcript: string): void {
     const target = this.config.keyword.toLowerCase().trim();
-    // Also support natural variations like "hey friday", "friday", "hello friday", "myraa", "jarvis"
+    // FRIDAY-first triggers + legacy jarvis/myraa aliases + natural variations.
+    // Covers English, Hinglish and Hindi-transliterated utterances containing
+    // the wake word (e.g. "friday youtube kholo", "hey friday time batao").
     const triggers = [
       target,
       'hey friday',
       'friday',
       'hello friday',
       'ok friday',
+      'hey jarvis',
+      'jarvis',
+      'hello jarvis',
+      'ok jarvis',
       'myraa',
       'hey myraa',
     ];

@@ -36,7 +36,7 @@ export const HUDPrivateVault: React.FC<HUDPrivateVaultProps> = ({
   onClose,
   onExplainFile,
 }) => {
-  const currentTheme = THEMES[theme] || THEMES.cyan;
+  const currentTheme = THEMES[theme] || THEMES.amber;
 
   const [isUnlocked, setIsUnlocked] = useState(false);
   const [files, setFiles] = useState<PrivateFileItem[]>([]);
@@ -485,7 +485,7 @@ export const HUDPrivateVault: React.FC<HUDPrivateVaultProps> = ({
                       className="flex items-center gap-1 px-2.5 py-1.5 rounded-lg border border-slate-700 bg-slate-900 hover:bg-slate-800 text-slate-300 hover:text-white text-xs transition-all cursor-pointer"
                       title="Upload file into private vault"
                     >
-                      <Upload className="w-3.5 h-3.5 text-sky-400" />
+                      <Upload className="w-3.5 h-3.5 text-amber-400" />
                       <span className="hidden sm:inline">Import</span>
                     </button>
                     <button
@@ -528,7 +528,7 @@ export const HUDPrivateVault: React.FC<HUDPrivateVaultProps> = ({
                           className={`p-3 rounded-xl border flex items-center justify-between gap-3 transition-all cursor-pointer ${
                             isSelected
                               ? 'bg-slate-800/90 border-emerald-500/80 shadow-md'
-                              : 'bg-[#0a0f1d] border-slate-800 hover:bg-slate-800/40 hover:border-slate-700'
+                              : 'bg-[#080A0D] border-slate-800 hover:bg-slate-800/40 hover:border-slate-700'
                           }`}
                         >
                           <div className="flex items-center gap-3 min-w-0">
@@ -695,7 +695,7 @@ export const HUDPrivateVault: React.FC<HUDPrivateVaultProps> = ({
         {/* Change Passcode Modal Overlay */}
         {isChangePinOpen && (
           <div className="absolute inset-0 z-20 bg-black/85 flex items-center justify-center p-4 backdrop-blur-sm">
-            <div className="w-full max-w-sm bg-[#0a0f1d] border border-slate-700 rounded-2xl p-5 shadow-2xl">
+            <div className="w-full max-w-sm bg-[#080A0D] border border-slate-700 rounded-2xl p-5 shadow-2xl">
               <div className="flex items-center justify-between pb-3 mb-3 border-b border-slate-800">
                 <h4 className="text-xs font-bold text-slate-100 uppercase tracking-wider flex items-center gap-2">
                   <KeyRound className="w-4 h-4 text-amber-400" />
@@ -762,7 +762,7 @@ export const HUDPrivateVault: React.FC<HUDPrivateVaultProps> = ({
         {/* Create New Secret File Modal Overlay */}
         {isNewFileModal && (
           <div className="absolute inset-0 z-20 bg-black/85 flex items-center justify-center p-4 backdrop-blur-sm">
-            <div className="w-full max-w-lg bg-[#0a0f1d] border border-slate-700 rounded-2xl p-5 shadow-2xl">
+            <div className="w-full max-w-lg bg-[#080A0D] border border-slate-700 rounded-2xl p-5 shadow-2xl">
               <div className="flex items-center justify-between pb-3 mb-3 border-b border-slate-800">
                 <h4 className="text-xs font-bold text-slate-100 uppercase tracking-wider flex items-center gap-2">
                   <Plus className="w-4 h-4 text-emerald-400" />

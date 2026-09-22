@@ -1,0 +1,26 @@
+A:\MD ENAYET HUSSAIN\Jarvis\android\app\src\main\java\com\jarvis\ai\plugins\ScreenContextPlugin.java:146: error: ';' expected
+            for (Long key in appMap.descendingKeySet()) {
+                         ^
+A:\MD ENAYET HUSSAIN\Jarvis\android\app\src\main\java\com\jarvis\ai\plugins\ScreenContextPlugin.java:146: error: ';' expected
+            for (Long key in appMap.descendingKeySet()) {
+                            ^
+2 errors
+
+FAILURE: Build failed with an exception.
+
+* What went wrong:
+Execution failed for task ':app:compileDebugJavaWithJavac'.
+> Compilation failed; see the compiler output below.
+  A:\MD ENAYET HUSSAIN\Jarvis\android\app\src\main\java\com\jarvis\ai\plugins\ScreenContextPlugin.java:146: error: ';' expected
+              for (Long key in appMap.descendingKeySet()) {
+                           ^
+  A:\MD ENAYET HUSSAIN\Jarvis\android\app\src\main\java\com\jarvis\ai\plugins\ScreenContextPlugin.java:146: error: ';' expected
+              for (Long key in appMap.descendingKeySet()) {
+                              ^
+  2 errors
+
+* Try:
+> Check your code and dependencies to fix the compilation error(s)
+> Run with --scan to get full insights.
+
+BUILD FAILED in 1m 28s

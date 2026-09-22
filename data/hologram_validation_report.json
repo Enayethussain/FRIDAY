@@ -1,0 +1,1152 @@
+{
+ "generated_at": "2026-09-18T10:34:15.306Z",
+ "total": 133,
+ "valid": 133,
+ "invalid": 0,
+ "entries": [
+  {
+   "id": "human_heart",
+   "ok": true,
+   "reason": "",
+   "meshes": 5,
+   "tris": 1176,
+   "bytes": 40488
+  },
+  {
+   "id": "human_brain",
+   "ok": true,
+   "reason": "",
+   "meshes": 4,
+   "tris": 1332,
+   "bytes": 40024
+  },
+  {
+   "id": "human_lungs",
+   "ok": true,
+   "reason": "",
+   "meshes": 5,
+   "tris": 808,
+   "bytes": 29964
+  },
+  {
+   "id": "human_kidney",
+   "ok": true,
+   "reason": "",
+   "meshes": 3,
+   "tris": 752,
+   "bytes": 24024
+  },
+  {
+   "id": "human_liver",
+   "ok": true,
+   "reason": "",
+   "meshes": 3,
+   "tris": 296,
+   "bytes": 12812
+  },
+  {
+   "id": "human_stomach",
+   "ok": true,
+   "reason": "",
+   "meshes": 3,
+   "tris": 480,
+   "bytes": 17924
+  },
+  {
+   "id": "human_eye",
+   "ok": true,
+   "reason": "",
+   "meshes": 4,
+   "tris": 1268,
+   "bytes": 38344
+  },
+  {
+   "id": "human_ear",
+   "ok": true,
+   "reason": "",
+   "meshes": 3,
+   "tris": 648,
+   "bytes": 20948
+  },
+  {
+   "id": "human_skull",
+   "ok": true,
+   "reason": "",
+   "meshes": 4,
+   "tris": 812,
+   "bytes": 26632
+  },
+  {
+   "id": "human_skeleton",
+   "ok": true,
+   "reason": "",
+   "meshes": 8,
+   "tris": 1152,
+   "bytes": 43176
+  },
+  {
+   "id": "human_spine",
+   "ok": true,
+   "reason": "",
+   "meshes": 6,
+   "tris": 304,
+   "bytes": 24252
+  },
+  {
+   "id": "human_hand",
+   "ok": true,
+   "reason": "",
+   "meshes": 7,
+   "tris": 204,
+   "bytes": 19344
+  },
+  {
+   "id": "human_foot",
+   "ok": true,
+   "reason": "",
+   "meshes": 6,
+   "tris": 172,
+   "bytes": 16500
+  },
+  {
+   "id": "human_arm",
+   "ok": true,
+   "reason": "",
+   "meshes": 5,
+   "tris": 492,
+   "bytes": 22328
+  },
+  {
+   "id": "human_leg",
+   "ok": true,
+   "reason": "",
+   "meshes": 4,
+   "tris": 240,
+   "bytes": 14460
+  },
+  {
+   "id": "human_femur",
+   "ok": true,
+   "reason": "",
+   "meshes": 5,
+   "tris": 912,
+   "bytes": 31808
+  },
+  {
+   "id": "human_ribcage",
+   "ok": true,
+   "reason": "",
+   "meshes": 5,
+   "tris": 1440,
+   "bytes": 42504
+  },
+  {
+   "id": "human_pelvis",
+   "ok": true,
+   "reason": "",
+   "meshes": 3,
+   "tris": 840,
+   "bytes": 25456
+  },
+  {
+   "id": "human_teeth",
+   "ok": true,
+   "reason": "",
+   "meshes": 7,
+   "tris": 84,
+   "bytes": 13292
+  },
+  {
+   "id": "blood_cell",
+   "ok": true,
+   "reason": "",
+   "meshes": 3,
+   "tris": 1024,
+   "bytes": 30292
+  },
+  {
+   "id": "dna_helix",
+   "ok": true,
+   "reason": "",
+   "meshes": 9,
+   "tris": 344,
+   "bytes": 25624
+  },
+  {
+   "id": "rna_strand",
+   "ok": true,
+   "reason": "",
+   "meshes": 6,
+   "tris": 840,
+   "bytes": 30916
+  },
+  {
+   "id": "neuron_cell",
+   "ok": true,
+   "reason": "",
+   "meshes": 5,
+   "tris": 448,
+   "bytes": 20528
+  },
+  {
+   "id": "animal_cell",
+   "ok": true,
+   "reason": "",
+   "meshes": 4,
+   "tris": 1192,
+   "bytes": 35916
+  },
+  {
+   "id": "plant_cell",
+   "ok": true,
+   "reason": "",
+   "meshes": 4,
+   "tris": 544,
+   "bytes": 20196
+  },
+  {
+   "id": "bacteria_cell",
+   "ok": true,
+   "reason": "",
+   "meshes": 4,
+   "tris": 424,
+   "bytes": 18076
+  },
+  {
+   "id": "virus_structure",
+   "ok": true,
+   "reason": "",
+   "meshes": 7,
+   "tris": 608,
+   "bytes": 27504
+  },
+  {
+   "id": "chromosome_x",
+   "ok": true,
+   "reason": "",
+   "meshes": 5,
+   "tris": 240,
+   "bytes": 17204
+  },
+  {
+   "id": "mitochondria",
+   "ok": true,
+   "reason": "",
+   "meshes": 3,
+   "tris": 980,
+   "bytes": 28188
+  },
+  {
+   "id": "protein_helix",
+   "ok": true,
+   "reason": "",
+   "meshes": 4,
+   "tris": 856,
+   "bytes": 27212
+  },
+  {
+   "id": "atom_model",
+   "ok": true,
+   "reason": "",
+   "meshes": 6,
+   "tris": 2048,
+   "bytes": 58436
+  },
+  {
+   "id": "pendulum_lab",
+   "ok": true,
+   "reason": "",
+   "meshes": 3,
+   "tris": 296,
+   "bytes": 12996
+  },
+  {
+   "id": "gear_pair",
+   "ok": true,
+   "reason": "",
+   "meshes": 4,
+   "tris": 176,
+   "bytes": 14500
+  },
+  {
+   "id": "pulley_set",
+   "ok": true,
+   "reason": "",
+   "meshes": 4,
+   "tris": 120,
+   "bytes": 11596
+  },
+  {
+   "id": "lever_simple",
+   "ok": true,
+   "reason": "",
+   "meshes": 3,
+   "tris": 48,
+   "bytes": 6944
+  },
+  {
+   "id": "bar_magnet",
+   "ok": true,
+   "reason": "",
+   "meshes": 3,
+   "tris": 408,
+   "bytes": 14576
+  },
+  {
+   "id": "electric_circuit",
+   "ok": true,
+   "reason": "",
+   "meshes": 6,
+   "tris": 324,
+   "bytes": 19064
+  },
+  {
+   "id": "coil_spring",
+   "ok": true,
+   "reason": "",
+   "meshes": 5,
+   "tris": 1164,
+   "bytes": 35172
+  },
+  {
+   "id": "convex_lens",
+   "ok": true,
+   "reason": "",
+   "meshes": 3,
+   "tris": 884,
+   "bytes": 26596
+  },
+  {
+   "id": "glass_prism",
+   "ok": true,
+   "reason": "",
+   "meshes": 1,
+   "tris": 12,
+   "bytes": 2124
+  },
+  {
+   "id": "planet_sun",
+   "ok": true,
+   "reason": "",
+   "meshes": 2,
+   "tris": 1328,
+   "bytes": 35092
+  },
+  {
+   "id": "planet_mercury",
+   "ok": true,
+   "reason": "",
+   "meshes": 2,
+   "tris": 548,
+   "bytes": 16840
+  },
+  {
+   "id": "planet_venus",
+   "ok": true,
+   "reason": "",
+   "meshes": 2,
+   "tris": 968,
+   "bytes": 26656
+  },
+  {
+   "id": "planet_earth",
+   "ok": true,
+   "reason": "",
+   "meshes": 3,
+   "tris": 1544,
+   "bytes": 42124
+  },
+  {
+   "id": "planet_moon",
+   "ok": true,
+   "reason": "",
+   "meshes": 3,
+   "tris": 680,
+   "bytes": 21576
+  },
+  {
+   "id": "planet_mars",
+   "ok": true,
+   "reason": "",
+   "meshes": 3,
+   "tris": 620,
+   "bytes": 20572
+  },
+  {
+   "id": "planet_jupiter",
+   "ok": true,
+   "reason": "",
+   "meshes": 3,
+   "tris": 1468,
+   "bytes": 40184
+  },
+  {
+   "id": "planet_saturn",
+   "ok": true,
+   "reason": "",
+   "meshes": 3,
+   "tris": 1940,
+   "bytes": 51244
+  },
+  {
+   "id": "planet_uranus",
+   "ok": true,
+   "reason": "",
+   "meshes": 2,
+   "tris": 1032,
+   "bytes": 28192
+  },
+  {
+   "id": "planet_neptune",
+   "ok": true,
+   "reason": "",
+   "meshes": 2,
+   "tris": 600,
+   "bytes": 18052
+  },
+  {
+   "id": "solar_system",
+   "ok": true,
+   "reason": "",
+   "meshes": 7,
+   "tris": 2740,
+   "bytes": 76900
+  },
+  {
+   "id": "spiral_galaxy",
+   "ok": true,
+   "reason": "",
+   "meshes": 3,
+   "tris": 1240,
+   "bytes": 34440
+  },
+  {
+   "id": "black_hole",
+   "ok": true,
+   "reason": "",
+   "meshes": 3,
+   "tris": 1620,
+   "bytes": 43684
+  },
+  {
+   "id": "asteroid_rock",
+   "ok": true,
+   "reason": "",
+   "meshes": 3,
+   "tris": 372,
+   "bytes": 14720
+  },
+  {
+   "id": "comet_ice",
+   "ok": true,
+   "reason": "",
+   "meshes": 3,
+   "tris": 296,
+   "bytes": 13700
+  },
+  {
+   "id": "space_station",
+   "ok": true,
+   "reason": "",
+   "meshes": 4,
+   "tris": 288,
+   "bytes": 14692
+  },
+  {
+   "id": "satellite_dish",
+   "ok": true,
+   "reason": "",
+   "meshes": 4,
+   "tris": 88,
+   "bytes": 10276
+  },
+  {
+   "id": "rocket_falcon",
+   "ok": true,
+   "reason": "",
+   "meshes": 5,
+   "tris": 152,
+   "bytes": 15392
+  },
+  {
+   "id": "space_shuttle",
+   "ok": true,
+   "reason": "",
+   "meshes": 4,
+   "tris": 104,
+   "bytes": 11100
+  },
+  {
+   "id": "astronaut_suit",
+   "ok": true,
+   "reason": "",
+   "meshes": 7,
+   "tris": 504,
+   "bytes": 25748
+  },
+  {
+   "id": "smartphone_x",
+   "ok": true,
+   "reason": "",
+   "meshes": 3,
+   "tris": 104,
+   "bytes": 7504
+  },
+  {
+   "id": "laptop_pro",
+   "ok": true,
+   "reason": "",
+   "meshes": 3,
+   "tris": 36,
+   "bytes": 5948
+  },
+  {
+   "id": "desktop_tower",
+   "ok": true,
+   "reason": "",
+   "meshes": 4,
+   "tris": 68,
+   "bytes": 8688
+  },
+  {
+   "id": "cpu_chip",
+   "ok": true,
+   "reason": "",
+   "meshes": 4,
+   "tris": 48,
+   "bytes": 7696
+  },
+  {
+   "id": "gpu_card",
+   "ok": true,
+   "reason": "",
+   "meshes": 4,
+   "tris": 152,
+   "bytes": 13236
+  },
+  {
+   "id": "motherboard_atx",
+   "ok": true,
+   "reason": "",
+   "meshes": 4,
+   "tris": 48,
+   "bytes": 7636
+  },
+  {
+   "id": "ram_stick",
+   "ok": true,
+   "reason": "",
+   "meshes": 2,
+   "tris": 24,
+   "bytes": 3976
+  },
+  {
+   "id": "ssd_drive",
+   "ok": true,
+   "reason": "",
+   "meshes": 2,
+   "tris": 24,
+   "bytes": 4004
+  },
+  {
+   "id": "hard_disk",
+   "ok": true,
+   "reason": "",
+   "meshes": 3,
+   "tris": 104,
+   "bytes": 9324
+  },
+  {
+   "id": "dslr_camera",
+   "ok": true,
+   "reason": "",
+   "meshes": 4,
+   "tris": 128,
+   "bytes": 12024
+  },
+  {
+   "id": "studio_mic",
+   "ok": true,
+   "reason": "",
+   "meshes": 3,
+   "tris": 448,
+   "bytes": 18040
+  },
+  {
+   "id": "boom_speaker",
+   "ok": true,
+   "reason": "",
+   "meshes": 3,
+   "tris": 140,
+   "bytes": 11472
+  },
+  {
+   "id": "headphones_bt",
+   "ok": true,
+   "reason": "",
+   "meshes": 3,
+   "tris": 464,
+   "bytes": 18616
+  },
+  {
+   "id": "mech_keyboard",
+   "ok": true,
+   "reason": "",
+   "meshes": 5,
+   "tris": 60,
+   "bytes": 9516
+  },
+  {
+   "id": "optical_mouse",
+   "ok": true,
+   "reason": "",
+   "meshes": 3,
+   "tris": 396,
+   "bytes": 15216
+  },
+  {
+   "id": "game_controller",
+   "ok": true,
+   "reason": "",
+   "meshes": 5,
+   "tris": 356,
+   "bytes": 18060
+  },
+  {
+   "id": "pcb_board",
+   "ok": true,
+   "reason": "",
+   "meshes": 4,
+   "tris": 120,
+   "bytes": 11428
+  },
+  {
+   "id": "robot_arm_6axis",
+   "ok": true,
+   "reason": "",
+   "meshes": 5,
+   "tris": 372,
+   "bytes": 20500
+  },
+  {
+   "id": "humanoid_bot",
+   "ok": true,
+   "reason": "",
+   "meshes": 8,
+   "tris": 312,
+   "bytes": 22448
+  },
+  {
+   "id": "quad_drone",
+   "ok": true,
+   "reason": "",
+   "meshes": 8,
+   "tris": 324,
+   "bytes": 27060
+  },
+  {
+   "id": "sedan_car",
+   "ok": true,
+   "reason": "",
+   "meshes": 6,
+   "tris": 280,
+   "bytes": 22548
+  },
+  {
+   "id": "sports_car",
+   "ok": true,
+   "reason": "",
+   "meshes": 7,
+   "tris": 292,
+   "bytes": 24368
+  },
+  {
+   "id": "motorcycle_hd",
+   "ok": true,
+   "reason": "",
+   "meshes": 5,
+   "tris": 184,
+   "bytes": 16256
+  },
+  {
+   "id": "bicycle_road",
+   "ok": true,
+   "reason": "",
+   "meshes": 5,
+   "tris": 700,
+   "bytes": 25212
+  },
+  {
+   "id": "city_bus",
+   "ok": true,
+   "reason": "",
+   "meshes": 6,
+   "tris": 248,
+   "bytes": 20944
+  },
+  {
+   "id": "express_train",
+   "ok": true,
+   "reason": "",
+   "meshes": 6,
+   "tris": 144,
+   "bytes": 15280
+  },
+  {
+   "id": "airliner_jet",
+   "ok": true,
+   "reason": "",
+   "meshes": 6,
+   "tris": 196,
+   "bytes": 18536
+  },
+  {
+   "id": "heli_rescue",
+   "ok": true,
+   "reason": "",
+   "meshes": 6,
+   "tris": 336,
+   "bytes": 19532
+  },
+  {
+   "id": "fighter_jet",
+   "ok": true,
+   "reason": "",
+   "meshes": 4,
+   "tris": 96,
+   "bytes": 10620
+  },
+  {
+   "id": "cargo_ship",
+   "ok": true,
+   "reason": "",
+   "meshes": 4,
+   "tris": 64,
+   "bytes": 8680
+  },
+  {
+   "id": "submarine_nuke",
+   "ok": true,
+   "reason": "",
+   "meshes": 4,
+   "tris": 340,
+   "bytes": 16480
+  },
+  {
+   "id": "battle_tank",
+   "ok": true,
+   "reason": "",
+   "meshes": 5,
+   "tris": 88,
+   "bytes": 10992
+  },
+  {
+   "id": "mars_rover",
+   "ok": true,
+   "reason": "",
+   "meshes": 7,
+   "tris": 248,
+   "bytes": 22008
+  },
+  {
+   "id": "formula_racer",
+   "ok": true,
+   "reason": "",
+   "meshes": 8,
+   "tris": 272,
+   "bytes": 24596
+  },
+  {
+   "id": "v8_engine",
+   "ok": true,
+   "reason": "",
+   "meshes": 5,
+   "tris": 152,
+   "bytes": 14292
+  },
+  {
+   "id": "steam_turbine",
+   "ok": true,
+   "reason": "",
+   "meshes": 3,
+   "tris": 124,
+   "bytes": 10624
+  },
+  {
+   "id": "dc_motor",
+   "ok": true,
+   "reason": "",
+   "meshes": 3,
+   "tris": 108,
+   "bytes": 9660
+  },
+  {
+   "id": "ac_generator",
+   "ok": true,
+   "reason": "",
+   "meshes": 3,
+   "tris": 72,
+   "bytes": 7744
+  },
+  {
+   "id": "gearbox_unit",
+   "ok": true,
+   "reason": "",
+   "meshes": 3,
+   "tris": 100,
+   "bytes": 9244
+  },
+  {
+   "id": "solar_panel",
+   "ok": true,
+   "reason": "",
+   "meshes": 3,
+   "tris": 36,
+   "bytes": 5880
+  },
+  {
+   "id": "wind_turbine",
+   "ok": true,
+   "reason": "",
+   "meshes": 5,
+   "tris": 216,
+   "bytes": 14472
+  },
+  {
+   "id": "suspension_bridge",
+   "ok": true,
+   "reason": "",
+   "meshes": 5,
+   "tris": 84,
+   "bytes": 10812
+  },
+  {
+   "id": "tower_crane",
+   "ok": true,
+   "reason": "",
+   "meshes": 5,
+   "tris": 100,
+   "bytes": 11704
+  },
+  {
+   "id": "piston_rod",
+   "ok": true,
+   "reason": "",
+   "meshes": 3,
+   "tris": 108,
+   "bytes": 9624
+  },
+  {
+   "id": "family_house",
+   "ok": true,
+   "reason": "",
+   "meshes": 4,
+   "tris": 44,
+   "bytes": 7616
+  },
+  {
+   "id": "apartment_block",
+   "ok": true,
+   "reason": "",
+   "meshes": 6,
+   "tris": 72,
+   "bytes": 11316
+  },
+  {
+   "id": "skyscraper_tower",
+   "ok": true,
+   "reason": "",
+   "meshes": 3,
+   "tris": 56,
+   "bytes": 6832
+  },
+  {
+   "id": "desert_pyramid",
+   "ok": true,
+   "reason": "",
+   "meshes": 1,
+   "tris": 8,
+   "bytes": 2148
+  },
+  {
+   "id": "lattice_tower",
+   "ok": true,
+   "reason": "",
+   "meshes": 4,
+   "tris": 128,
+   "bytes": 10252
+  },
+  {
+   "id": "arch_bridge",
+   "ok": true,
+   "reason": "",
+   "meshes": 4,
+   "tris": 356,
+   "bytes": 14864
+  },
+  {
+   "id": "geo_dome",
+   "ok": true,
+   "reason": "",
+   "meshes": 3,
+   "tris": 600,
+   "bytes": 21708
+  },
+  {
+   "id": "lighthouse_beacon",
+   "ok": true,
+   "reason": "",
+   "meshes": 4,
+   "tris": 140,
+   "bytes": 12968
+  },
+  {
+   "id": "pine_tree",
+   "ok": true,
+   "reason": "",
+   "meshes": 3,
+   "tris": 96,
+   "bytes": 9900
+  },
+  {
+   "id": "bloom_flower",
+   "ok": true,
+   "reason": "",
+   "meshes": 6,
+   "tris": 732,
+   "bytes": 28584
+  },
+  {
+   "id": "dog_buddy",
+   "ok": true,
+   "reason": "",
+   "meshes": 8,
+   "tris": 184,
+   "bytes": 20132
+  },
+  {
+   "id": "cat_kitty",
+   "ok": true,
+   "reason": "",
+   "meshes": 9,
+   "tris": 448,
+   "bytes": 28712
+  },
+  {
+   "id": "bird_sparrow",
+   "ok": true,
+   "reason": "",
+   "meshes": 7,
+   "tris": 556,
+   "bytes": 26200
+  },
+  {
+   "id": "fish_gold",
+   "ok": true,
+   "reason": "",
+   "meshes": 5,
+   "tris": 528,
+   "bytes": 21060
+  },
+  {
+   "id": "cap_mushroom",
+   "ok": true,
+   "reason": "",
+   "meshes": 2,
+   "tris": 328,
+   "bytes": 12456
+  },
+  {
+   "id": "butterfly_mono",
+   "ok": true,
+   "reason": "",
+   "meshes": 5,
+   "tris": 80,
+   "bytes": 10536
+  },
+  {
+   "id": "wood_chair",
+   "ok": true,
+   "reason": "",
+   "meshes": 6,
+   "tris": 152,
+   "bytes": 15536
+  },
+  {
+   "id": "study_table",
+   "ok": true,
+   "reason": "",
+   "meshes": 5,
+   "tris": 140,
+   "bytes": 13556
+  },
+  {
+   "id": "desk_lamp",
+   "ok": true,
+   "reason": "",
+   "meshes": 4,
+   "tris": 256,
+   "bytes": 15812
+  },
+  {
+   "id": "open_book",
+   "ok": true,
+   "reason": "",
+   "meshes": 3,
+   "tris": 36,
+   "bytes": 5964
+  },
+  {
+   "id": "tea_cup",
+   "ok": true,
+   "reason": "",
+   "meshes": 2,
+   "tris": 320,
+   "bytes": 12432
+  },
+  {
+   "id": "water_bottle",
+   "ok": true,
+   "reason": "",
+   "meshes": 3,
+   "tris": 136,
+   "bytes": 11240
+  },
+  {
+   "id": "cube_prim",
+   "ok": true,
+   "reason": "",
+   "meshes": 1,
+   "tris": 12,
+   "bytes": 2128
+  },
+  {
+   "id": "sphere_prim",
+   "ok": true,
+   "reason": "",
+   "meshes": 1,
+   "tris": 1064,
+   "bytes": 27116
+  },
+  {
+   "id": "cylinder_prim",
+   "ok": true,
+   "reason": "",
+   "meshes": 1,
+   "tris": 112,
+   "bytes": 7476
+  },
+  {
+   "id": "torus_prim",
+   "ok": true,
+   "reason": "",
+   "meshes": 1,
+   "tris": 1280,
+   "bytes": 31296
+  },
+  {
+   "id": "cone_prim",
+   "ok": true,
+   "reason": "",
+   "meshes": 1,
+   "tris": 56,
+   "bytes": 5404
+  },
+  {
+   "id": "pyramid_prim",
+   "ok": true,
+   "reason": "",
+   "meshes": 1,
+   "tris": 8,
+   "bytes": 1964
+  },
+  {
+   "id": "wall_clock",
+   "ok": true,
+   "reason": "",
+   "meshes": 4,
+   "tris": 200,
+   "bytes": 14008
+  },
+  {
+   "id": "unav_ironman_exact",
+   "ok": true,
+   "reason": "UNAVAILABLE (no file, by design)",
+   "meshes": 0,
+   "tris": 0,
+   "bytes": 0
+  },
+  {
+   "id": "unav_tajmahal",
+   "ok": true,
+   "reason": "UNAVAILABLE (no file, by design)",
+   "meshes": 0,
+   "tris": 0,
+   "bytes": 0
+  },
+  {
+   "id": "unav_eiffel",
+   "ok": true,
+   "reason": "UNAVAILABLE (no file, by design)",
+   "meshes": 0,
+   "tris": 0,
+   "bytes": 0
+  },
+  {
+   "id": "unav_iphone",
+   "ok": true,
+   "reason": "UNAVAILABLE (no file, by design)",
+   "meshes": 0,
+   "tris": 0,
+   "bytes": 0
+  },
+  {
+   "id": "unav_tesla",
+   "ok": true,
+   "reason": "UNAVAILABLE (no file, by design)",
+   "meshes": 0,
+   "tris": 0,
+   "bytes": 0
+  },
+  {
+   "id": "unav_brain_exact",
+   "ok": true,
+   "reason": "UNAVAILABLE (no file, by design)",
+   "meshes": 0,
+   "tris": 0,
+   "bytes": 0
+  },
+  {
+   "id": "unav_heart_exact",
+   "ok": true,
+   "reason": "UNAVAILABLE (no file, by design)",
+   "meshes": 0,
+   "tris": 0,
+   "bytes": 0
+  },
+  {
+   "id": "unav_trex",
+   "ok": true,
+   "reason": "UNAVAILABLE (no file, by design)",
+   "meshes": 0,
+   "tris": 0,
+   "bytes": 0
+  },
+  {
+   "id": "unav_burj",
+   "ok": true,
+   "reason": "UNAVAILABLE (no file, by design)",
+   "meshes": 0,
+   "tris": 0,
+   "bytes": 0
+  },
+  {
+   "id": "unav_titanic",
+   "ok": true,
+   "reason": "UNAVAILABLE (no file, by design)",
+   "meshes": 0,
+   "tris": 0,
+   "bytes": 0
+  }
+ ]
+}

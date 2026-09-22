@@ -14,11 +14,11 @@ export const HUDWeatherWidget: React.FC<HUDWeatherWidgetProps> = ({
   theme,
   onClose,
 }) => {
-  const currentTheme = THEMES[theme] || THEMES.cyan;
+  const currentTheme = THEMES[theme] || THEMES.amber;
 
   const getWeatherIcon = () => {
     const c = weather.condition.toLowerCase();
-    if (c.includes('rain') || c.includes('shower')) return <CloudRain className="w-6 h-6 text-sky-400" />;
+    if (c.includes('rain') || c.includes('shower')) return <CloudRain className="w-6 h-6 text-amber-400" />;
     if (c.includes('cloud')) return <Cloud className="w-6 h-6 text-slate-300" />;
     return <Sun className="w-6 h-6 text-amber-400" />;
   };
@@ -82,7 +82,7 @@ export const HUDWeatherWidget: React.FC<HUDWeatherWidgetProps> = ({
       <div className="mt-3 pt-3 border-t border-slate-800/80 flex items-center justify-between text-xs font-mono text-slate-400">
         {weather.humidity !== undefined && (
           <div className="flex items-center gap-1">
-            <Droplets className="w-3.5 h-3.5 text-sky-400" />
+            <Droplets className="w-3.5 h-3.5 text-amber-400" />
             <span>{weather.humidity}% Humidity</span>
           </div>
         )}

@@ -1,0 +1,24 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // Rules for notes collection
+    match /notes/{noteId} {
+      allow read, write: if request.auth != null;
+    }
+    
+    // Rules for user documents and memories — owner-only so one
+    // authenticated user can never read another user's memories.
+    match /users/{userId} {
+      allow read, write: if request.auth != null && request.auth.uid == userId;
+      
+      match /memories/{memoryId} {
+        allow read, write: if request.auth != null && request.auth.uid == userId;
+      }
+    }
+    
+    // Test collection rule
+    match /test/{docId} {
+      allow read, write: if request.auth != null;
+    }
+  }
+}

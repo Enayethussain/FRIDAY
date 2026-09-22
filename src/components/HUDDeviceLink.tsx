@@ -110,7 +110,7 @@ export function HUDDeviceLink({ isOpen, onClose }: HUDDeviceLinkProps) {
         </div>
         <button
           onClick={async () => { setBusy(true); try { const { globalCloudSync } = await import('../services/CloudSyncManager'); const r = await globalCloudSync.syncNow(); setMsg(r ? (r.paired ? `☁️ Synced (paired room) ✅` : '☁️ Synced (solo — pair karo sharing ke liye) ✅') : 'Sync ke liye pehle server URL save karo.'); } catch (e: any) { setMsg(e?.message || 'Sync failed'); } setBusy(false); }}
-          className="w-full py-2 rounded-xl bg-cyan-600 hover:bg-cyan-500 disabled:opacity-50 text-white font-semibold text-sm mb-4"
+          className="w-full py-2 rounded-xl bg-amber-600 hover:bg-amber-500 disabled:opacity-50 text-white font-semibold text-sm mb-4"
         >
           ☁️ Abhi Sync Karo
         </button>

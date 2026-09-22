@@ -26,7 +26,7 @@ export const HUDTasksDrawer: React.FC<HUDTasksDrawerProps> = ({
   const [priority, setPriority] = useState<'high' | 'normal' | 'low'>('normal');
   const [isAdding, setIsAdding] = useState(false);
   const [isListening, setIsListening] = useState(false);
-  const currentTheme = THEMES[theme] || THEMES.cyan;
+  const currentTheme = THEMES[theme] || THEMES.amber;
 
   if (!isOpen) return null;
 
@@ -193,7 +193,7 @@ export const HUDTasksDrawer: React.FC<HUDTasksDrawerProps> = ({
                 placeholder="What needs to be done?"
                 value={newTask}
                 onChange={(e) => setNewTask(e.target.value)}
-                className="w-full pl-3 pr-10 py-1.5 rounded-lg bg-slate-900 border border-slate-700 text-xs font-mono text-slate-100 placeholder-slate-500 focus:outline-none focus:border-cyan-500"
+                className="w-full pl-3 pr-10 py-1.5 rounded-lg bg-slate-900 border border-slate-700 text-xs font-mono text-slate-100 placeholder-slate-500 focus:outline-none focus:border-amber-500"
                 autoFocus
               />
               <button

@@ -1,0 +1,12 @@
+{
+  "name": "JARVIS",
+  "description": "Real-time omniglot voice AI assistant powered by Gemini Live API with screen watching teacher mode, step-by-step syllabus continuity, persistent long-term memory, hands-free wakeword detection, commander biometric authorization, and emotional reactor resonance.",
+  "requestFramePermissions": [
+    "microphone",
+    "camera"
+  ],
+  "majorCapabilities": [
+    "MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"
+  ]
+}
+

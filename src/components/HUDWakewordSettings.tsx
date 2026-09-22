@@ -26,10 +26,10 @@ interface HUDWakewordSettingsProps {
 }
 
 const WAKEWORD_OPTIONS = [
-  { id: 'hey friday', label: '"Hey Friday"', description: 'Standard Iron Man Stark protocol' },
+  { id: 'hey friday', label: '"Hey Friday"', description: 'Default FRIDAY activation' },
   { id: 'friday', label: '"Friday"', description: 'Direct single-word activation' },
+  { id: 'hey jarvis', label: '"Hey Jarvis" (legacy alias)', description: 'Old trigger, still works' },
   { id: 'myraa', label: '"Myraa"', description: 'Alternative companion identity' },
-  { id: 'jarvis', label: '"Jarvis"', description: 'Legacy Stark protocol' },
 ];
 
 export const HUDWakewordSettings: React.FC<HUDWakewordSettingsProps> = ({
@@ -53,7 +53,7 @@ export const HUDWakewordSettings: React.FC<HUDWakewordSettingsProps> = ({
 
   if (!isOpen) return null;
 
-  const currentTheme = THEMES[theme] || THEMES.cyan;
+  const currentTheme = THEMES[theme] || THEMES.amber;
 
   const handleToggleEnable = (newEnabled: boolean) => {
     setEnabled(newEnabled);
@@ -197,7 +197,7 @@ export const HUDWakewordSettings: React.FC<HUDWakewordSettingsProps> = ({
           <div className="p-3 rounded-xl bg-slate-950/60 border border-slate-800 flex items-center justify-between">
             <div className="flex items-center gap-2">
               {audioFeedback ? (
-                <Volume2 className="w-4 h-4 text-cyan-400" />
+                <Volume2 className="w-4 h-4 text-amber-400" />
               ) : (
                 <VolumeX className="w-4 h-4 text-slate-500" />
               )}
@@ -216,7 +216,7 @@ export const HUDWakewordSettings: React.FC<HUDWakewordSettingsProps> = ({
                 type="button"
                 onClick={onTestChime}
                 title="Test activation chime"
-                className="px-2 py-1 rounded text-[10px] font-mono border border-slate-700 hover:border-cyan-400 text-slate-300"
+                className="px-2 py-1 rounded text-[10px] font-mono border border-slate-700 hover:border-amber-400 text-slate-300"
               >
                 Test Sound
               </button>
@@ -224,7 +224,7 @@ export const HUDWakewordSettings: React.FC<HUDWakewordSettingsProps> = ({
                 type="checkbox"
                 checked={audioFeedback}
                 onChange={(e) => handleToggleAudioFeedback(e.target.checked)}
-                className="rounded bg-slate-900 border-slate-700 text-cyan-500 focus:ring-0 cursor-pointer"
+                className="rounded bg-slate-900 border-slate-700 text-amber-500 focus:ring-0 cursor-pointer"
               />
             </div>
           </div>

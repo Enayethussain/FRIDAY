@@ -5,6 +5,8 @@ import {
   EmotionalMetadata,
   EmotionalTone,
   FunctionCallItem,
+  HologramControlAction,
+  HologramState,
   LiveVoice,
   MediaViewportState,
   MemoryItem,
@@ -35,6 +37,8 @@ import { HapticFeedback } from '../utils/HapticFeedback';
 export interface StateManagerListeners {
   onStateChange: (state: AssistantState) => void;
   onError: (message: string) => void;
+  /** Real tool-burst activity for the orb (processing/executing/success visuals). */
+  onOrbActivity?: (e: { type: 'tool-start' } | { type: 'tool-end'; ok: boolean }) => void;
   onActionCard: (card: ActionCard) => void;
   onTimerCreated: (timer: CountdownTimer) => void;
   onThemeChanged: (accent: ThemeAccent) => void;
@@ -56,6 +60,10 @@ export interface StateManagerListeners {
   onOpenPrivateVault: () => void;
   onOpenRoutinePreferences: () => void;
   onOpenDesktopBridge: () => void;
+  onHologram: (h: HologramState) => void;
+  onHologramControl: (action: HologramControlAction, degrees?: number) => void;
+  onHologramCompare: (a: HologramState, b: HologramState) => void;
+  onHologramLibrary: () => void;
 }
 
 export class StateManager {
@@ -67,6 +75,7 @@ export class StateManager {
   private session: LiveSession;
   private toolManager: ToolManager;
   private listeners: Partial<StateManagerListeners> = {};
+  // FRIDAY is the default voice (warm female Aoede). JARVIS uses Fenrir.
   private selectedVoice: LiveVoice = 'Aoede';
   private witLevel: WitLevel = 'witty';
   private emotionalProcessor: EmotionalMetadataProcessor = globalEmotionalProcessor;
@@ -101,6 +110,10 @@ export class StateManager {
       },
       onSetTheme: (accent) => this.listeners.onThemeChanged?.(accent),
       onOpenMediaViewport: (viewport) => this.listeners.onMediaViewport?.(viewport),
+      onOpenHologram: (h) => this.listeners.onHologram?.(h),
+      onControlHologram: (action, degrees) => this.listeners.onHologramControl?.(action, degrees),
+      onCompareHolograms: (a, b) => this.listeners.onHologramCompare?.(a, b),
+      onOpenHologramLibrary: () => this.listeners.onHologramLibrary?.(),
       onWeatherUpdated: (weather) => this.listeners.onWeatherUpdated?.(weather),
       onNotesChanged: (notes) => this.listeners.onNotesChanged?.(notes),
       onTasksChanged: (tasks) => this.listeners.onTasksChanged?.(tasks),
@@ -174,7 +187,10 @@ export class StateManager {
         console.log('[StateManager] Turn complete from model');
       },
       onToolCall: async (calls: FunctionCallItem[]) => {
+        this.listeners.onOrbActivity?.({ type: 'tool-start' });
         const responses = await this.toolManager.executeCalls(calls);
+        const ok = responses.every((r) => !r.response || !(r.response as { error?: string }).error);
+        this.listeners.onOrbActivity?.({ type: 'tool-end', ok });
         this.session.sendToolResponse(responses);
       },
       onError: (msg) => {
@@ -257,12 +273,12 @@ export class StateManager {
     } catch (err: any) {
       console.error('[StateManager] Connection failed:', err);
       this.disconnect();
-      let errMsg = err?.message || 'Failed to connect to FRIDAY voice server.';
+      let errMsg = err?.message || 'Failed to connect to JARVIS voice server.';
       
       if (err?.name === 'NotAllowedError') {
-        errMsg = 'Microphone permission denied. Please allow microphone access to talk with FRIDAY.';
+        errMsg = 'Microphone permission denied. Please allow microphone access to talk with JARVIS.';
       } else if (errMsg.toLowerCase().includes('resource_exhausted') || errMsg.toLowerCase().includes('quota')) {
-        errMsg = 'FRIDAY ENERGY DEPLETED: Core processors are cooling down. Please wait 60 seconds for a power cell recharge.';
+        errMsg = 'JARVIS ENERGY DEPLETED: Core processors are cooling down. Please wait 60 seconds for a power cell recharge.';
       }
 
       this.listeners.onError?.(errMsg);
@@ -271,6 +287,24 @@ export class StateManager {
 
   getVoiceAuthManager() {
     return this.streamer.getVoiceAuthManager();
+  }
+
+  /**
+   * True only while voice is ACTIVELY in use (recording speech, playing a
+   * response, or connecting) — NOT merely while connected-idle. Used by the
+   * AdMob critical-operation gate so an idle-but-connected session does not
+   * suppress ads forever. Fail-closed: unknown mic state suppresses.
+   */
+  isVoiceActiveNow(): boolean {
+    if (this.state === 'connecting' || this.state === 'speaking') return true;
+    if (this.state !== 'listening') return false;
+    try {
+      const mic = this.streamer.getMicStats();
+      if (!mic) return true;
+      return !!(mic.voiceDetected || mic.rms >= mic.threshold * 0.8);
+    } catch {
+      return true;
+    }
   }
 
   setCameraVideoProvider(fn: (() => HTMLVideoElement | null) | null): void {

@@ -82,7 +82,7 @@ function u32(n) { return new Uint8Array(new Uint32Array([n]).buffer); }
 function hex(b) { return Array.from(new Uint8Array(b)).map(x=>x.toString(16).padStart(2,'0')).join(''); }
 `;
 
-/** FRIDAY security gate — CYBER-LOCK UI ported 1:1, naam FRIDAY ke hisab se */
+/** JARVIS security gate — CYBER-LOCK UI ported 1:1, naam JARVIS ke hisab se */
 export const HUDFridayLogin: React.FC<HUDFridayLoginProps> = ({ isSetup, onAuthenticate }) => {
   const [started, setStarted] = useState(false);
   const [pass, setPass] = useState('');
@@ -224,8 +224,8 @@ export const HUDFridayLogin: React.FC<HUDFridayLoginProps> = ({ isSetup, onAuthe
     } catch {}
     speak(
       isSetup
-        ? 'Welcome, Commander. I am Friday. Multithreaded core active. Create your passphrase and key file to lock the vault.'
-        : 'Welcome back, Commander. I am Friday. A E S G C M encryption initialized. System ready.',
+        ? 'Welcome, Commander. I am Jarvis. Multithreaded core active. Create your passphrase and key file to lock the vault.'
+        : 'Welcome back, Commander. I am Jarvis. A E S G C M encryption initialized. System ready.',
       true
     );
   };
@@ -243,7 +243,7 @@ export const HUDFridayLogin: React.FC<HUDFridayLoginProps> = ({ isSetup, onAuthe
     a.href = URL.createObjectURL(blob); a.download = name;
     document.body.appendChild(a); a.click(); document.body.removeChild(a);
     setBusy(false);
-    // Decrypt success = FRIDAY login bhi khol do (passphrase se session)
+    // Decrypt success = JARVIS login bhi khol do (passphrase se session)
     if (name && !name.endsWith('.ether') && pass.trim().length >= 4) {
       onAuthenticate(pass.trim()).catch(() => {});
     }
@@ -258,7 +258,7 @@ export const HUDFridayLogin: React.FC<HUDFridayLoginProps> = ({ isSetup, onAuthe
 
   const process = async (mode: 'encrypt' | 'decrypt') => {
     const p = pass.trim();
-    // Login-only mode: sirf passphrase, koi file nahi → seedha FRIDAY auth
+    // Login-only mode: sirf passphrase, koi file nahi → seedha JARVIS auth
     if (!p) { speak('Error. Credentials missing.'); setStatusMsg('MISSING INPUTS', true); return; }
     if (!keyFile || !targetFile) {
       if (p.length < 4) { setStatusMsg('PASSPHRASE MIN 4 CHARS', true); return; }
@@ -266,7 +266,7 @@ export const HUDFridayLogin: React.FC<HUDFridayLoginProps> = ({ isSetup, onAuthe
       setProgress(50);
       const ok = await onAuthenticate(p);
       setProgress(100);
-      if (ok) { setStatusMsg('ACCESS GRANTED — FRIDAY ONLINE'); speak('Access granted. Friday online.'); setPass(''); }
+      if (ok) { setStatusMsg('ACCESS GRANTED — JARVIS ONLINE'); speak('Access granted. Jarvis online.'); setPass(''); }
       else {
         setBusy(false); setProgress(0);
         setStatusMsg(isSetup ? 'SETUP FAILED — RETRY' : 'ACCESS DENIED — WRONG PASSPHRASE', true);
@@ -366,7 +366,7 @@ export const HUDFridayLogin: React.FC<HUDFridayLoginProps> = ({ isSetup, onAuthe
         <div id="fl-init" onClick={init}>
           <div className="fl-ring" />
           <h2 style={{ fontFamily: 'Orbitron', color: 'white', letterSpacing: 2 }}>SYSTEM STANDBY</h2>
-          <p style={{ color: '#06b6d4', fontSize: '0.9rem' }}>CLICK ANYWHERE TO INITIALIZE FRIDAY</p>
+          <p style={{ color: '#06b6d4', fontSize: '0.9rem' }}>CLICK ANYWHERE TO INITIALIZE JARVIS</p>
         </div>
       )}
 
@@ -380,7 +380,7 @@ export const HUDFridayLogin: React.FC<HUDFridayLoginProps> = ({ isSetup, onAuthe
       <div className={`fl-panel ${started ? 'active' : ''}`}>
         <div className="fl-header">
           <div>
-            <h1 className="fl-title">FRIDAY: MILITARY GRADE ENCRYPTION</h1>
+            <h1 className="fl-title">JARVIS: MILITARY GRADE ENCRYPTION</h1>
             <div className="fl-sub">{isSetup ? 'Commander Vault Setup • v9.0' : 'Commander Secure Login • v9.0'}</div>
           </div>
           <div className="fl-mute" onClick={toggleMute} title="Voice toggle">
@@ -444,7 +444,7 @@ export const HUDFridayLogin: React.FC<HUDFridayLoginProps> = ({ isSetup, onAuthe
             className="fl-btn fl-unlock"
             disabled={busy}
             onClick={() => process('decrypt')}
-            onMouseEnter={(e) => tip(e.currentTarget, 'UNLOCK', 'Restore data + open FRIDAY. Sirf passphrase se bhi login hota hai. Fails instantly if integrity compromised.')}
+            onMouseEnter={(e) => tip(e.currentTarget, 'UNLOCK', 'Restore data + open JARVIS. Sirf passphrase se bhi login hota hai. Fails instantly if integrity compromised.')}
             onMouseLeave={untip}
           >
             {busy ? 'WORKING...' : 'UNLOCK'}
@@ -454,7 +454,7 @@ export const HUDFridayLogin: React.FC<HUDFridayLoginProps> = ({ isSetup, onAuthe
         <div className="fl-status-wrap">
           <div className="fl-bar-bg"><div className="fl-bar-fill" style={{ width: `${progress}%`, background: isErr ? '#ef4444' : '#06b6d4' }} /></div>
           <div className="fl-status" style={{ color: isErr ? '#ef4444' : undefined }}>{status}</div>
-          <div className="fl-hint">FRIDAY SECURE GATE • ARGON2ID + AES-256-GCM • {isSetup ? 'SETUP MODE' : 'LOGIN MODE'}</div>
+          <div className="fl-hint">JARVIS SECURE GATE • ARGON2ID + AES-256-GCM • {isSetup ? 'SETUP MODE' : 'LOGIN MODE'}</div>
         </div>
       </div>
     </div>

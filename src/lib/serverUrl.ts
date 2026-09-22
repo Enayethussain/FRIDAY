@@ -1,18 +1,24 @@
 import { Capacitor } from '@capacitor/core';
 
 /**
- * Central backend resolver — PC uses relative URLs,
- * Android APK uses a configurable server URL stored in localStorage.
- * Set it in the app UI (DeviceLink / Settings) or via:
- *   localStorage.setItem('FRIDAY_SERVER_URL', 'https://your-server.com')
+ * Central backend resolver — PC/web uses relative URLs (same-origin) unless
+ * a public base URL is configured; Android APK uses a configurable server
+ * URL stored in localStorage.
+ *
+ * Public web deployments (e.g. Vercel) set VITE_API_BASE_URL to the backend
+ * origin (public config only — never secrets). Resolution order:
+ *   localStorage FRIDAY_SERVER_URL > VITE_API_BASE_URL >
+ *   VITE_FRIDAY_SERVER_URL > '' (same-origin).
  */
 export function getServerBase(): string {
   try {
+    const env = (import.meta as any).env || {};
     const stored =
       localStorage.getItem('FRIDAY_SERVER_URL') ||
-      (import.meta as any).env?.VITE_FRIDAY_SERVER_URL ||
+      env.VITE_API_BASE_URL ||
+      env.VITE_FRIDAY_SERVER_URL ||
       '';
-    if (stored) return stored.replace(/\/$/, '');
+    if (stored) return String(stored).replace(/\/$/, '');
   } catch {}
   // On native Android, window.location.host is localhost (WebView) — not usable.
   // Return empty so callers can warn; user must set FRIDAY_SERVER_URL.

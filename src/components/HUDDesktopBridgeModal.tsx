@@ -38,7 +38,7 @@ export const HUDDesktopBridgeModal: React.FC<HUDDesktopBridgeModalProps> = ({
   onOpenFileVault,
   onOpenPrivateVault,
 }) => {
-  const currentTheme = THEMES[theme] || THEMES.cyan;
+  const currentTheme = THEMES[theme] || THEMES.amber;
   const [copiedScript, setCopiedScript] = useState(false);
   const [activeTab, setActiveTab] = useState<'in_app' | 'native_bridge'>('in_app');
 
@@ -160,7 +160,7 @@ if __name__ == '__main__':
             onClick={() => setActiveTab('in_app')}
             className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer ${
               activeTab === 'in_app'
-                ? 'bg-cyan-500 text-black shadow-[0_0_15px_rgba(6,182,212,0.4)]'
+                ? 'bg-amber-500 text-black shadow-[0_0_15px_rgba(255,196,0,0.4)]'
                 : 'bg-slate-900 border border-slate-800 text-slate-400 hover:text-white'
             }`}
           >
@@ -173,7 +173,7 @@ if __name__ == '__main__':
             onClick={() => setActiveTab('native_bridge')}
             className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer ${
               activeTab === 'native_bridge'
-                ? 'bg-cyan-500 text-black shadow-[0_0_15px_rgba(6,182,212,0.4)]'
+                ? 'bg-amber-500 text-black shadow-[0_0_15px_rgba(255,196,0,0.4)]'
                 : 'bg-slate-900 border border-slate-800 text-slate-400 hover:text-white'
             }`}
           >
@@ -187,8 +187,8 @@ if __name__ == '__main__':
           {activeTab === 'in_app' ? (
             /* In-App Direct Voice Actions */
             <div className="space-y-4">
-              <div className="p-3.5 rounded-xl bg-cyan-950/30 border border-cyan-500/40 text-xs text-cyan-200 flex items-center gap-3">
-                <Sparkles className="w-5 h-5 text-cyan-400 shrink-0" />
+              <div className="p-3.5 rounded-xl bg-amber-950/30 border border-amber-500/40 text-xs text-amber-200 flex items-center gap-3">
+                <Sparkles className="w-5 h-5 text-amber-400 shrink-0" />
                 <div>
                   <strong>No setup required!</strong> F.R.I.D.A.Y. directly runs these tools right on your screen via voice. Try saying any of the voice phrases below.
                 </div>
@@ -196,11 +196,11 @@ if __name__ == '__main__':
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 {/* 1. Calculator Card */}
-                <div className="p-4 rounded-xl bg-[#090e1c] border border-slate-800 hover:border-cyan-500/50 transition-all flex flex-col justify-between">
+                <div className="p-4 rounded-xl bg-[#090e1c] border border-slate-800 hover:border-amber-500/50 transition-all flex flex-col justify-between">
                   <div>
                     <div className="flex items-center justify-between mb-2">
                       <div className="flex items-center gap-2">
-                        <div className="p-2 rounded-lg bg-slate-900 border border-slate-800 text-cyan-400">
+                        <div className="p-2 rounded-lg bg-slate-900 border border-slate-800 text-amber-400">
                           <Calculator className="w-4 h-4" />
                         </div>
                         <h4 className="text-sm font-bold text-slate-200">Voice Calculator</h4>
@@ -224,14 +224,14 @@ if __name__ == '__main__':
                       onClose();
                       onOpenCalculator();
                     }}
-                    className="mt-3 w-full py-1.5 rounded-lg bg-slate-800 hover:bg-cyan-600 hover:text-black text-xs font-bold text-slate-200 transition-all cursor-pointer"
+                    className="mt-3 w-full py-1.5 rounded-lg bg-slate-800 hover:bg-amber-600 hover:text-black text-xs font-bold text-slate-200 transition-all cursor-pointer"
                   >
                     Open Calculator Now
                   </button>
                 </div>
 
                 {/* 2. YouTube Card */}
-                <div className="p-4 rounded-xl bg-[#090e1c] border border-slate-800 hover:border-cyan-500/50 transition-all flex flex-col justify-between">
+                <div className="p-4 rounded-xl bg-[#090e1c] border border-slate-800 hover:border-amber-500/50 transition-all flex flex-col justify-between">
                   <div>
                     <div className="flex items-center justify-between mb-2">
                       <div className="flex items-center gap-2">
@@ -266,11 +266,11 @@ if __name__ == '__main__':
                 </div>
 
                 {/* 3. File Vault & Explain Card */}
-                <div className="p-4 rounded-xl bg-[#090e1c] border border-slate-800 hover:border-cyan-500/50 transition-all flex flex-col justify-between">
+                <div className="p-4 rounded-xl bg-[#090e1c] border border-slate-800 hover:border-amber-500/50 transition-all flex flex-col justify-between">
                   <div>
                     <div className="flex items-center justify-between mb-2">
                       <div className="flex items-center gap-2">
-                        <div className="p-2 rounded-lg bg-slate-900 border border-slate-800 text-sky-400">
+                        <div className="p-2 rounded-lg bg-slate-900 border border-slate-800 text-amber-400">
                           <FileSearch className="w-4 h-4" />
                         </div>
                         <h4 className="text-sm font-bold text-slate-200">File Search & Explain</h4>
@@ -294,7 +294,7 @@ if __name__ == '__main__':
                       onClose();
                       onOpenFileVault();
                     }}
-                    className="mt-3 w-full py-1.5 rounded-lg bg-slate-800 hover:bg-sky-600 hover:text-white text-xs font-bold text-slate-200 transition-all cursor-pointer"
+                    className="mt-3 w-full py-1.5 rounded-lg bg-slate-800 hover:bg-amber-600 hover:text-white text-xs font-bold text-slate-200 transition-all cursor-pointer"
                   >
                     Open PC File Vault
                   </button>
@@ -340,7 +340,7 @@ if __name__ == '__main__':
             /* Native Bridge Tab */
             <div className="space-y-4">
               <div className="text-xs text-slate-300 leading-relaxed">
-                Browser security prevents web apps from directly opening native Windows desktop executables (like <code className="text-cyan-400">calc.exe</code> or <code className="text-cyan-400">notepad.exe</code>) without your consent. To allow FRIDAY to launch native local PC software, run this 1-file Python helper:
+                Browser security prevents web apps from directly opening native Windows desktop executables (like <code className="text-amber-400">calc.exe</code> or <code className="text-amber-400">notepad.exe</code>) without your consent. To allow FRIDAY to launch native local PC software, run this 1-file Python helper:
               </div>
 
               <div className="flex items-center justify-between">
@@ -351,7 +351,7 @@ if __name__ == '__main__':
                 <button
                   type="button"
                   onClick={handleCopyScript}
-                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-cyan-600 hover:bg-cyan-500 text-black text-xs font-bold transition-all cursor-pointer"
+                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-amber-600 hover:bg-amber-500 text-black text-xs font-bold transition-all cursor-pointer"
                 >
                   {copiedScript ? <Check className="w-3.5 h-3.5" /> : <Copy className="w-3.5 h-3.5" />}
                   <span>{copiedScript ? 'Copied Python Bridge!' : 'Copy Script'}</span>
@@ -364,7 +364,7 @@ if __name__ == '__main__':
 
               <div className="p-3 rounded-xl bg-slate-900/60 border border-slate-800 text-xs text-slate-400 space-y-1">
                 <div className="text-slate-200 font-bold mb-1">Quick Steps to Run:</div>
-                <div>1. Save the code as <code className="text-cyan-400">friday_pc_bridge.py</code> on your computer.</div>
+                <div>1. Save the code as <code className="text-amber-400">friday_pc_bridge.py</code> on your computer.</div>
                 <div>2. Run <code className="text-emerald-400">pip install flask flask-cors</code> in your terminal.</div>
                 <div>3. Run <code className="text-emerald-400">python friday_pc_bridge.py</code>.</div>
                 <div>4. Now when you speak to FRIDAY, it can also launch native Windows/Mac applications!</div>
@@ -376,7 +376,7 @@ if __name__ == '__main__':
         {/* Footer */}
         <div className="px-5 py-2.5 bg-[#050810] border-t border-slate-800 flex items-center justify-between text-[11px] text-slate-400">
           <div className="flex items-center gap-2">
-            <ShieldCheck className="w-3.5 h-3.5 text-cyan-400" />
+            <ShieldCheck className="w-3.5 h-3.5 text-amber-400" />
             <span>FRIDAY UNIVERSAL VOICE CONTROLLER READY</span>
           </div>
           <button
