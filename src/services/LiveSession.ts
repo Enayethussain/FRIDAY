@@ -1,5 +1,6 @@
 import { FunctionCallItem, FunctionResponseItem } from '../types';
 import { wsUrl, getServerBase } from '../lib/serverUrl';
+import { voiceMarkConnected, voiceMarkRequestStart } from './VoiceLatency';
 
 export interface LiveSessionCallbacks {
   onConnected?: () => void;
@@ -38,6 +39,7 @@ export class LiveSession {
   ): Promise<void> {
     return new Promise((resolve, reject) => {
       this.disconnect();
+      voiceMarkRequestStart();
 
       if (getServerBase() === '' && (window.location.protocol === 'capacitor:' || window.location.protocol === 'file:')) {
         return reject(new Error('No server configured. Set FRIDAY_SERVER_URL to your hosted backend (https://...) in Settings.'));
@@ -71,6 +73,7 @@ export class LiveSession {
           switch (msg.type) {
             case 'connected':
               this.isConnected = true;
+              voiceMarkConnected();
               if (!hasResolved) {
                 hasResolved = true;
                 resolve();

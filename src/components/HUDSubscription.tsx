@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { XCircle, Check, RefreshCw } from 'lucide-react';
 import { getEntitlements, refreshEntitlements, subscribeEntitlements, type EntitlementSnapshot } from '../services/EntitlementService';
 import { getProducts, purchaseProduct, restorePurchases, currentSubscriptionToken, describeOffer, lifecycleMessage, type ProductsResult, type ProductItem, type PlayOffer } from '../services/BillingService';
+import { getMyOrders, formatINR, type OrderHistoryItem } from '../services/PaymentService';
 import type { ThemeAccent } from '../types';
 import { THEMES } from '../utils/theme';
 
@@ -44,6 +45,7 @@ export function HUDSubscription({ isOpen, onClose, theme }: HUDSubscriptionProps
   const [pricesState, setPricesState] = useState<'loading' | 'ready' | 'failed'>('loading');
   const [notice, setNotice] = useState('');
   const [busy, setBusy] = useState(false);
+  const [orders, setOrders] = useState<OrderHistoryItem[] | null>(null);
 
   const loadPrices = async () => {
     setPricesState('loading');
@@ -65,6 +67,7 @@ export function HUDSubscription({ isOpen, onClose, theme }: HUDSubscriptionProps
     // Renewal/expiry refresh triggers: screen open always re-verifies.
     void refreshEntitlements();
     void loadPrices();
+    void getMyOrders().then(setOrders).catch(() => setOrders([]));
     setNotice('');
     return off;
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -288,6 +291,25 @@ export function HUDSubscription({ isOpen, onClose, theme }: HUDSubscriptionProps
         >
           <RefreshCw className="w-4 h-4" /> Restore Purchases
         </button>
+        <div className="mt-3 rounded-2xl border border-slate-800 bg-slate-900/50 p-4">
+          <h3 className="font-bold text-sm text-slate-100 mb-2">Order History</h3>
+          {orders === null ? (
+            <p className="text-xs font-mono text-slate-500 animate-pulse">Loading orders…</p>
+          ) : orders.length === 0 ? (
+            <p className="text-xs text-slate-500">Koi order nahi hai.</p>
+          ) : (
+            <ul className="space-y-1.5">
+              {orders.map((o) => (
+                <li key={o.orderId} className="flex flex-wrap items-center justify-between gap-2 text-xs font-mono text-slate-300 border-b border-slate-800/60 last:border-0 pb-1.5">
+                  <span className="truncate max-w-[140px]">{o.orderId}</span>
+                  <span>{o.planId} · {formatINR(o.amount)}</span>
+                  <span className={o.status === 'fulfilled' || o.status === 'success' ? 'text-emerald-300 font-bold' : 'text-slate-400'}>{o.status}</span>
+                  <span className="text-slate-500">{new Date(o.createdAt).toLocaleDateString()}</span>
+                </li>
+              ))}
+            </ul>
+          )}
+        </div>
         <p className="mt-2 text-[10px] text-slate-500 text-center">
           {products && !products.paymentsConfigured ? 'Payments not configured yet — purchases unavailable.' : 'Purchases verified server-side when billing lands.'}
         </p>

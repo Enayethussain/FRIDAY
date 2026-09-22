@@ -103,6 +103,8 @@ import { initAdsEntitlement, setCriticalBusy } from './services/AdsService';
 import { hasEntitlement, refreshEntitlements } from './services/EntitlementService';
 import { UpgradePrompt } from './components/UpgradePrompt';
 import { HUDSubscription } from './components/HUDSubscription';
+import { UpdateDialog } from './components/UpdateDialog';
+import { checkForUpdate, isUpdateSupported, type UpdateCheckResult } from './services/UpdateService';
 // Dual-voice system: FRIDAY (default) / JARVIS with real TTS switching.
 import {
   getActiveVoice,
@@ -353,6 +355,8 @@ export default function App() {
   const [isShareOpen, setIsShareOpen] = useState(false);
   // Subscription + upgrade prompt (central entitlement gates below).
   const [isSubscriptionOpen, setIsSubscriptionOpen] = useState(false);
+  const [isUpdateOpen, setIsUpdateOpen] = useState(false);
+  const [updateCheck, setUpdateCheck] = useState<UpdateCheckResult | null>(null);
   const [upgradeAsk, setUpgradeAsk] = useState<{ featureLabel: string; requiredPlan: 'PRO' | 'PLUS' } | null>(null);
   const isMobileUI = isMobileApp();
 
@@ -663,6 +667,18 @@ export default function App() {
     void initAdsEntitlement();
     // Central entitlements (confirmed/cached/unavailable) for feature gates.
     void refreshEntitlements();
+    // In-app update: silent check on native launch; dialog only when a real
+    // newer build is confirmed (never on errors or when unconfigured).
+    if (isUpdateSupported()) {
+      void checkForUpdate()
+        .then((r) => {
+          if (r.configured && r.updateAvailable && r.remote) {
+            setUpdateCheck(r);
+            setIsUpdateOpen(true);
+          }
+        })
+        .catch(() => {});
+    }
     globalDeviceLink.startPolling(5000);
     import('./services/CloudSyncManager').then(({ globalCloudSync }) => {
       globalDeviceLink.register().catch(() => {}).finally(() => globalCloudSync.start(10000));
@@ -1977,6 +1993,14 @@ export default function App() {
           ]},
           { title: 'Account', actions: [
             { id: 'plans', label: 'Subscription', icon: '💎', onOpen: () => setIsSubscriptionOpen(true) },
+            { id: 'update', label: 'Update', icon: '⬆️', onOpen: async () => {
+              try {
+                setUpdateCheck(await checkForUpdate());
+              } catch {
+                setUpdateCheck(null);
+              }
+              setIsUpdateOpen(true);
+            } },
           ]},
         ]}
       />
@@ -1996,6 +2020,8 @@ export default function App() {
 
       {/* Subscription: Upgrade FRIDAY (plans, prices, restore) + upgrade prompt for locked features */}
       <HUDSubscription isOpen={isSubscriptionOpen} onClose={() => setIsSubscriptionOpen(false)} theme={theme} />
+      {/* In-app update dialog (version check result drives it; nothing faked) */}
+      <UpdateDialog isOpen={isUpdateOpen} onClose={() => setIsUpdateOpen(false)} initial={updateCheck} />
       <UpgradePrompt
         isOpen={upgradeAsk !== null}
         featureLabel={upgradeAsk?.featureLabel || ''}

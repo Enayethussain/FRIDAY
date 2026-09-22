@@ -33,6 +33,7 @@ import { globalWakewordManager } from './WakewordManager';
 import { globalRoutinePreferenceManager } from './RoutinePreferenceManager';
 import { SoundEffects } from '../utils/SoundEffects';
 import { HapticFeedback } from '../utils/HapticFeedback';
+import { voiceMarkInterrupted, voiceMarkPlaybackStart, voiceMarkResponseStart, voiceMarkTurnComplete } from './VoiceLatency';
 
 export interface StateManagerListeners {
   onStateChange: (state: AssistantState) => void;
@@ -90,6 +91,7 @@ export class StateManager {
     this.player = new AudioPlayer((isPlaying) => {
       if (this.state === 'disconnected' || this.state === 'connecting') return;
       if (isPlaying) {
+        voiceMarkPlaybackStart();
         this.setState('speaking');
       } else {
         this.setState('listening');
@@ -158,6 +160,7 @@ export class StateManager {
         this.setState('listening');
       },
       onAudioChunk: (audioBase64) => {
+        voiceMarkResponseStart();
         this.player.playChunk(audioBase64).catch((err) => {
           console.error('[StateManager] Playback error:', err);
         });
@@ -172,6 +175,7 @@ export class StateManager {
             const mic = this.streamer.getMicStats();
             if (mic.voiceDetected || mic.rms >= mic.threshold * 0.8) {
               console.log('[StateManager] Real interruption confirmed. Stopping audio.');
+              voiceMarkInterrupted();
               this.player.stopAll();
               this.setState('listening');
             } else {
@@ -184,6 +188,7 @@ export class StateManager {
         }, 450);
       },
       onTurnComplete: () => {
+        voiceMarkTurnComplete();
         console.log('[StateManager] Turn complete from model');
       },
       onToolCall: async (calls: FunctionCallItem[]) => {

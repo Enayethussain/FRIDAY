@@ -122,7 +122,31 @@ export const FridayOrb = forwardRef<FridayOrbControl, FridayOrbProps>(function F
 
   const toggleGestures = async (force?: boolean) => {
     if (props.disableGestures) return;
-    const want = force ?? !gestureRef.current?.active;
+    // Single model instance for the component lifetime: created once, then
+    // start/stop only toggles camera+loop (model stays READY). This kills the
+    // enable→disable→enable re-init race class entirely.
+    if (!gestureRef.current) {
+      gestureRef.current = new HandGestureControl({
+        onRotate: (dx, dy) => {
+          const grp = sceneRef.current?.group;
+          if (!grp) return;
+          grp.rotation.y += dx;
+          grp.rotation.x = Math.max(-0.9, Math.min(0.9, grp.rotation.x + dy));
+        },
+        onZoom: (next) => { zoomRef.current = Math.max(1.8, Math.min(4.2, next)); },
+        getZoom: () => zoomRef.current,
+        onExpand: (v) => { explodeRef.current = v; },
+        onSwipe: (dir) => {
+          // swipe UP = toggle voice session (same real action as tapping the orb)
+          if (dir === 'up') { setGestureMsg('Swipe ↑ — voice toggle'); onToggle(); }
+          else setGestureMsg(`Swipe ${dir} — only ↑ is wired (voice toggle)`);
+        },
+        onStatus: (m) => setGestureMsg(m),
+        onError: (m) => { setGestureMsg(m); setGesturesOn(false); setGestureBusy(false); },
+        onFrame: (hands) => { try { globalGestureEngine.onFrame(hands); } catch { /* engine-only */ } },
+      });
+    }
+    const want = force ?? !gestureRef.current.active;
     if (!want) {
       gestureRef.current?.stop();
       gestureRef.current?.setExternalDriven(false);
@@ -148,26 +172,7 @@ export const FridayOrb = forwardRef<FridayOrbControl, FridayOrbProps>(function F
       onOrbExpand: (v) => { explodeRef.current = v; },
     });
     globalGestureEngine.setPaused(false);
-    const g = new HandGestureControl({
-      onRotate: (dx, dy) => {
-        const grp = sceneRef.current?.group;
-        if (!grp) return;
-        grp.rotation.y += dx;
-        grp.rotation.x = Math.max(-0.9, Math.min(0.9, grp.rotation.x + dy));
-      },
-      onZoom: (next) => { zoomRef.current = Math.max(1.8, Math.min(4.2, next)); },
-      getZoom: () => zoomRef.current,
-      onExpand: (v) => { explodeRef.current = v; },
-      onSwipe: (dir) => {
-        // swipe UP = toggle voice session (same real action as tapping the orb)
-        if (dir === 'up') { setGestureMsg('Swipe ↑ — voice toggle'); onToggle(); }
-        else setGestureMsg(`Swipe ${dir} — only ↑ is wired (voice toggle)`);
-      },
-      onStatus: (m) => setGestureMsg(m),
-      onError: (m) => { setGestureMsg(m); setGesturesOn(false); setGestureBusy(false); },
-      onFrame: (hands) => { try { globalGestureEngine.onFrame(hands); } catch { /* engine-only */ } },
-    });
-    gestureRef.current = g;
+    const g = gestureRef.current!;
     await g.start();
     setGestureBusy(false);
     if (g.active) setGesturesOn(true);

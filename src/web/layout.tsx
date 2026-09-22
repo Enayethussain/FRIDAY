@@ -45,6 +45,9 @@ export function WebHeader() {
           {link('/contact', 'Contact')}
         </nav>
         <div className="flex items-center gap-2">
+          <Link to="/upgrade" aria-label="Upgrade FRIDAY plan" className="px-4 py-2 rounded-xl text-sm font-bold border border-amber-500/60 text-amber-300 hover:bg-amber-500/10 focus-visible:outline-2 focus-visible:outline-amber-300 transition min-h-[44px] flex items-center">
+            Upgrade
+          </Link>
           <Link to="/login" className="px-4 py-2 rounded-xl text-sm font-bold bg-amber-500 hover:bg-amber-400 text-slate-950 transition min-h-[44px] flex items-center">
             Login
           </Link>
@@ -54,6 +57,7 @@ export function WebHeader() {
         {link('/', 'Home')}
         {link('/features', 'Features')}
         {link('/pricing', 'Pricing')}
+        {link('/upgrade', 'Upgrade')}
         {link('/about', 'About')}
         {link('/contact', 'Contact')}
       </nav>
@@ -76,6 +80,7 @@ export function WebFooter() {
           <div className="flex flex-col gap-1.5">
             <Link to="/features" className="text-slate-300 hover:text-amber-300">Features</Link>
             <Link to="/pricing" className="text-slate-300 hover:text-amber-300">Pricing</Link>
+            <Link to="/upgrade" className="text-slate-300 hover:text-amber-300">Upgrade</Link>
             <Link to="/dashboard" className="text-slate-300 hover:text-amber-300">Open app</Link>
           </div>
         </div>

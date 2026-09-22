@@ -64,9 +64,14 @@ interface StoreShape {
   users: Record<string, UserRecord>;
   usage: Record<string, UsageRecord>; // key: userId:YYYY-MM-DD
   settings: Record<string, unknown>;
+  // Payment tables (v2 migration, additive only — users/usage untouched).
+  paymentOrders: Record<string, import('./payments/types.js').PaymentOrder>;
+  paymentOrdersByProvider: Record<string, string>; // provider:providerOrderId -> orderId (unique)
+  webhookEvents: Record<string, import('./payments/types.js').WebhookEvent>; // eventKey -> event (unique)
+  refunds: Record<string, import('./payments/types.js').RefundRecord>;
 }
 
-const STORE_VERSION = 1;
+const STORE_VERSION = 2;
 
 function dayKey(now = Date.now()): string {
   return new Date(now).toISOString().slice(0, 10);
@@ -82,20 +87,26 @@ export class FridayStore {
   }
 
   private blank(): StoreShape {
-    return { version: STORE_VERSION, users: {}, usage: {}, settings: {} };
+    return { version: STORE_VERSION, users: {}, usage: {}, settings: {}, paymentOrders: {}, paymentOrdersByProvider: {}, webhookEvents: {}, refunds: {} };
   }
 
   private load(): StoreShape {
     try {
       if (!fs.existsSync(this.file)) return this.blank();
       const raw = JSON.parse(fs.readFileSync(this.file, 'utf8'));
-      // Migrate: keep everything unknown, fill what's missing.
+      // Migrate: keep everything unknown, fill what's missing. v1 -> v2 adds
+      // payment tables only; existing users/usage/settings are preserved.
       const base = this.blank();
+      const obj = (v: unknown) => (v && typeof v === 'object' && !Array.isArray(v) ? v as Record<string, never> : undefined);
       return {
         version: STORE_VERSION,
-        users: (raw && typeof raw.users === 'object' && raw.users) || base.users,
-        usage: (raw && typeof raw.usage === 'object' && raw.usage) || base.usage,
-        settings: (raw && typeof raw.settings === 'object' && raw.settings) || base.settings,
+        users: obj(raw?.users) as StoreShape['users'] || base.users,
+        usage: obj(raw?.usage) as StoreShape['usage'] || base.usage,
+        settings: obj(raw?.settings) as StoreShape['settings'] || base.settings,
+        paymentOrders: obj(raw?.paymentOrders) as StoreShape['paymentOrders'] || base.paymentOrders,
+        paymentOrdersByProvider: obj(raw?.paymentOrdersByProvider) as StoreShape['paymentOrdersByProvider'] || base.paymentOrdersByProvider,
+        webhookEvents: obj(raw?.webhookEvents) as StoreShape['webhookEvents'] || base.webhookEvents,
+        refunds: obj(raw?.refunds) as StoreShape['refunds'] || base.refunds,
       };
     } catch {
       // Corrupt file: back it up, never delete user data.
@@ -246,6 +257,58 @@ export class FridayStore {
   setSetting(key: string, value: unknown): void {
     this.data.settings[key] = value;
     this.save();
+  }
+
+  // ---- Payment tables: uniqueness enforced here (order_id, provider order,
+  // webhook event key). All writes persist; duplicates are rejected, never
+  // double-applied.
+
+  savePaymentOrder(o: import('./payments/types.js').PaymentOrder): void {
+    this.data.paymentOrders[o.orderId] = o;
+    if (o.providerOrderId) {
+      this.data.paymentOrdersByProvider[`${o.provider}:${o.providerOrderId}`] = o.orderId;
+    }
+    this.save();
+  }
+
+  getPaymentOrder(orderId: string): import('./payments/types.js').PaymentOrder | null {
+    return this.data.paymentOrders[orderId] || null;
+  }
+
+  findPaymentOrderByProvider(provider: string, providerOrderId: string): import('./payments/types.js').PaymentOrder | null {
+    const id = this.data.paymentOrdersByProvider[`${provider}:${providerOrderId}`];
+    return (id && this.data.paymentOrders[id]) || null;
+  }
+
+  listPaymentOrders(userKey: string, limit = 50): import('./payments/types.js').PaymentOrder[] {
+    return Object.values(this.data.paymentOrders)
+      .filter((o) => o.userKey === userKey)
+      .sort((a, b) => b.createdAt - a.createdAt)
+      .slice(0, Math.max(1, Math.min(200, limit)));
+  }
+
+  listAllPaymentOrders(status: string, limit = 100): import('./payments/types.js').PaymentOrder[] {
+    const all = Object.values(this.data.paymentOrders).sort((a, b) => b.createdAt - a.createdAt);
+    const filtered = !status || status === 'all' ? all : all.filter((o) => o.status === status);
+    return filtered.slice(0, Math.max(1, Math.min(500, limit)));
+  }
+
+  hasWebhookEvent(eventKey: string): boolean {
+    return !!this.data.webhookEvents[eventKey];
+  }
+
+  saveWebhookEvent(e: import('./payments/types.js').WebhookEvent): void {
+    this.data.webhookEvents[e.eventKey] = e;
+    this.save();
+  }
+
+  saveRefund(r: import('./payments/types.js').RefundRecord): void {
+    this.data.refunds[r.refundId] = r;
+    this.save();
+  }
+
+  getRefund(refundId: string): import('./payments/types.js').RefundRecord | null {
+    return this.data.refunds[refundId] || null;
   }
 }
 

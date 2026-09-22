@@ -1,3 +1,5 @@
+import { voiceMarkTtsStart } from './VoiceLatency';
+
 /**
  * AudioPlayer
  * Plays 24kHz PCM16 audio chunks received from Gemini Live API using Web Audio API.
@@ -16,6 +18,12 @@ export class AudioPlayer {
   private isProcessingQueue: boolean = false;
   private minBufferSize: number = 1;
   private maxBufferSize: number = 3;
+  /**
+   * First chunk of a turn plays immediately instead of waiting for the
+   * 2-chunk jitter gate — this is the dominant client-side first-sound
+   * saving. Later chunks keep normal jitter protection.
+   */
+  private turnFresh: boolean = true;
 
   constructor(onPlayingStateChange?: (isPlaying: boolean) => void) {
     if (onPlayingStateChange) {
@@ -66,12 +74,18 @@ export class AudioPlayer {
 
       // Jitter buffer: pehle 2 chunk jama karo taaki beech me gap (rukavat) na aaye.
       // 200ms se zyada wait nahi — latency low rahe.
+      // Exception: turn ka PEHLA chunk turant bajao (first-sound latency).
+      const queueWasEmpty = this.audioQueue.length === 0 && this.activeSources.length === 0;
       this.audioQueue.push(audioBuffer);
       if (this.audioQueue.length > 12) {
         this.audioQueue.shift(); // bahut pichhe ho gaya to sabse purana drop karo
         this.nextScheduledTime = 0;
       }
-      if (!this.isProcessingQueue && (this.audioQueue.length >= 2 || this.activeSources.length > 0)) {
+      if (this.turnFresh && queueWasEmpty) {
+        this.turnFresh = false;
+        voiceMarkTtsStart();
+        if (!this.isProcessingQueue) this.flushQueue(ctx);
+      } else if (!this.isProcessingQueue && (this.audioQueue.length >= 2 || this.activeSources.length > 0)) {
         this.flushQueue(ctx);
       } else if (!this.isProcessingQueue) {
         if (this.drainTimeout) clearTimeout(this.drainTimeout);
@@ -130,6 +144,7 @@ export class AudioPlayer {
           if (this.drainTimeout) clearTimeout(this.drainTimeout);
           this.drainTimeout = setTimeout(() => {
             if (this.activeSources.length === 0 && this.audioQueue.length === 0 && this.onPlayingStateChange) {
+              this.turnFresh = true; // next chunk starts a fresh turn
               this.onPlayingStateChange(false);
             }
           }, 150);
@@ -159,6 +174,7 @@ export class AudioPlayer {
     this.audioQueue = [];
     this.isProcessingQueue = false;
     this.nextScheduledTime = 0;
+    this.turnFresh = true;
 
     if (this.onPlayingStateChange) {
       this.onPlayingStateChange(false);

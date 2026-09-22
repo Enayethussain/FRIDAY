@@ -8,6 +8,7 @@ import android.webkit.WebViewClient;
 import com.getcapacitor.BridgeActivity;
 import com.friday.ai.ads.AppOpenAdManager;
 import com.friday.ai.plugins.AdsPlugin;
+import com.friday.ai.plugins.AppUpdatePlugin;
 import com.friday.ai.plugins.BillingPlugin;
 import com.friday.ai.plugins.PhonePlugin;
 import com.friday.ai.plugins.DeviceControlPlugin;
@@ -23,6 +24,7 @@ public class MainActivity extends BridgeActivity {
     @Override
     public void onCreate(Bundle savedInstanceState) {
         registerPlugin(AdsPlugin.class);
+        registerPlugin(AppUpdatePlugin.class);
         registerPlugin(BillingPlugin.class);
         registerPlugin(PhonePlugin.class);
         registerPlugin(DeviceControlPlugin.class);

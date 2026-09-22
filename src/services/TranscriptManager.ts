@@ -12,6 +12,8 @@ class TranscriptManagerService {
   private entries: TranscriptEntry[] = [];
   private sessionStartTime: number = Date.now();
   private listeners: ((entries: TranscriptEntry[]) => void)[] = [];
+  /** Session transcript cap: prevents unbounded growth over long sessions. */
+  private static readonly MAX_ENTRIES = 500;
 
   constructor() {
     // Initial system entry
@@ -36,6 +38,9 @@ class TranscriptManagerService {
     };
 
     this.entries.push(newEntry);
+    if (this.entries.length > TranscriptManagerService.MAX_ENTRIES) {
+      this.entries.splice(0, this.entries.length - TranscriptManagerService.MAX_ENTRIES);
+    }
     this.notify();
   }
 

@@ -2173,6 +2173,8 @@ import { FridayStore } from './server/store.js';
 import { createV1Router } from './server/v1.js';
 import { createCashfreeRouter } from './server/cashfree.js';
 import { effectivePlan, productById } from './server/billing.js';
+import { createPaymentRouter } from './server/payments/router.js';
+import { selectProvider } from './server/payments/providers/phonepe.js';
 const fridayConfig = loadConfig();
 const aiRouter = new AIRouter(fridayConfig);
 const fridayStore = new FridayStore(fridayConfig.storePath);
@@ -2206,6 +2208,19 @@ app.use('/api/v1/billing', createCashfreeRouter({
     } as never);
     return { plan };
   },
+  log: (...a: any[]) => console.log(...a),
+  logError: (...a: any[]) => console.error(...a),
+}));
+
+// [UPI payments hook] web subscriptions via configurable provider
+// (PhonePe Standard Checkout v2). Secrets stay server-side; plans activate
+// ONLY from verified provider state. Works wherever this backend runs
+// (Render/Docker); the static Vercel frontend calls it via VITE_API_BASE_URL.
+app.use('/api/payment', createPaymentRouter({
+  store: fridayStore,
+  provider: selectProvider(),
+  appUrl: fridayConfig.backendUrl || process.env.APP_URL || 'http://localhost:3000',
+  redact: redactSecrets,
   log: (...a: any[]) => console.log(...a),
   logError: (...a: any[]) => console.error(...a),
 }));

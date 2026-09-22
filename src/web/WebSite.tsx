@@ -3,6 +3,8 @@ import { BrowserRouter, Navigate, Route, Routes, useLocation } from 'react-route
 import { Capacitor } from '@capacitor/core';
 import { HomePage, FeaturesPage, AboutPage } from './pages-main';
 import { PricingPage } from './pages-pricing';
+import { UpgradePage } from './pages-upgrade';
+import { PaymentStatusPage } from './pages-payment';
 import { ContactPage, PrivacyPage, TermsPage, RefundPage } from './pages-legal';
 import { LoginPage, RegisterPage } from './pages-auth';
 import { globalAuthManager } from '../services/AuthManager';
@@ -49,6 +51,8 @@ export function WebSite({ dashboard }: { dashboard: React.ReactNode }) {
             <Route path="/" element={<HomePage />} />
             <Route path="/features" element={<FeaturesPage />} />
             <Route path="/pricing" element={<PricingPage />} />
+            <Route path="/upgrade" element={<UpgradePage />} />
+            <Route path="/payment/success" element={<PaymentStatusPage />} />
             <Route path="/about" element={<AboutPage />} />
             <Route path="/contact" element={<ContactPage />} />
             <Route path="/privacy" element={<PrivacyPage />} />

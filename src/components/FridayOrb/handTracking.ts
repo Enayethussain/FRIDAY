@@ -1,4 +1,14 @@
 import { ORB_GESTURE, ORB_HAND } from './orbConfig';
+import { voicePerfEnabled } from '../../services/VoiceLatency';
+
+/** Development-only gesture diagnostics (structure counts only, never images). */
+function gestureDiag(...args: unknown[]): void {
+  if (!voicePerfEnabled()) return;
+  try {
+    // eslint-disable-next-line no-console
+    console.log('[GESTURE]', ...args);
+  } catch { /* diagnostics never break tracking */ }
+}
 
 /**
  * REAL webcam hand tracking via MediaPipe Tasks Vision (HandLandmarker).
@@ -83,6 +93,14 @@ export class HandGestureControl {
   /** when true, an external engine owns rotate/zoom/expand; this class still tracks swipe + raw frames */
   private externalDriven = false;
   private stage: GestureStage = 'UNINITIALIZED';
+  /**
+   * Single controlled model lifecycle: the landmarker loads ONCE and is kept
+   * while the feature exists (fast re-enable, no re-init race). Camera and
+   * frame loop start/stop per toggle. Full release happens in dispose().
+   */
+  private modelReady = false;
+  private loopGen = 0;
+  private loggedStructure = false;
 
   constructor(cb: HandGestureCallbacks) {
     this.cb = cb;
@@ -102,70 +120,73 @@ export class HandGestureControl {
   async start(): Promise<void> {
     if (this.running) return;
     this.setStage('INITIALIZING');
-    // Phase 1 — SDK import (bundled chunk must exist).
-    let mod: any;
-    try {
-      this.cb.onStatus('Camera starting…');
-      mod = await import('@mediapipe/tasks-vision');
-      if (!mod || !mod.FilesetResolver || !mod.HandLandmarker) {
-        throw new Error('gesture SDK module incomplete');
-      }
-    } catch (e: unknown) {
-      this.stop();
-      this.setStage('MODEL_ERROR');
-      const msg = e instanceof Error ? e.message : String(e);
-      this.cb.onError(`Hand model failed to load (offline?) — gestures OFF. [${msg.slice(0, 80)}]`);
-      return;
-    }
-    // Phase 2 — WASM + model (CDN fetch; GPU first, CPU fallback).
-    this.setStage('MODEL_LOADING');
-    try {
-      this.cb.onStatus('Loading hand model…');
-      const vision = await mod.FilesetResolver.forVisionTasks(
-        'https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@1.0.1/wasm'
-      );
-      if (!vision) throw new Error('vision runtime unavailable');
+    // Model loads exactly once per instance (READY gate below); camera
+    // (re)starts on every enable. No inference runs before READY.
+    if (!this.modelReady) {
+      // Phase 1 — SDK import (bundled chunk must exist).
+      let mod: any;
       try {
-        this.landmarker = await mod.HandLandmarker.createFromOptions(vision, {
-          baseOptions: {
-            modelAssetPath:
-              'https://storage.googleapis.com/mediapipe-models/hand_landmarker/hand_landmarker/float16/1/hand_landmarker.task',
-            delegate: 'GPU',
-          },
-          runningMode: 'VIDEO',
-          numHands: 2,
-          minHandDetectionConfidence: 0.5,
-          minHandPresenceConfidence: 0.5,
-          minTrackingConfidence: 0.5,
-        }) as unknown as HandGestureControl['landmarker'];
-      } catch {
-        // Weak iGPU / blocked GPU delegate — fall back to CPU instead of giving up.
-        this.cb.onStatus('GPU hand model failed — trying CPU fallback…');
-        this.landmarker = await mod.HandLandmarker.createFromOptions(vision, {
-          baseOptions: {
-            modelAssetPath:
-              'https://storage.googleapis.com/mediapipe-models/hand_landmarker/hand_landmarker/float16/1/hand_landmarker.task',
-            delegate: 'CPU',
-          },
-          runningMode: 'VIDEO',
-          numHands: 2,
-          minHandDetectionConfidence: 0.5,
-          minHandPresenceConfidence: 0.5,
-          minTrackingConfidence: 0.5,
-        }) as unknown as HandGestureControl['landmarker'];
+        this.cb.onStatus('Camera starting…');
+        mod = await import('@mediapipe/tasks-vision');
+        if (!mod || !mod.FilesetResolver || !mod.HandLandmarker) {
+          throw new Error('gesture SDK module incomplete');
+        }
+      } catch (e: unknown) {
+        this.setStage('MODEL_ERROR');
+        const msg = e instanceof Error ? e.message : String(e);
+        this.cb.onError(`Hand model failed to load (offline?) — gestures OFF. [${msg.slice(0, 80)}]`);
+        return;
       }
-      if (!this.landmarker || typeof (this.landmarker as any).detectForVideo !== 'function') {
-        throw new Error('hand landmarker unavailable');
+      // Phase 2 — WASM + model (CDN fetch; GPU first, CPU fallback).
+      this.setStage('MODEL_LOADING');
+      try {
+        this.cb.onStatus('Loading hand model…');
+        const vision = await mod.FilesetResolver.forVisionTasks(
+          'https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@1.0.1/wasm'
+        );
+        if (!vision) throw new Error('vision runtime unavailable');
+        try {
+          this.landmarker = await mod.HandLandmarker.createFromOptions(vision, {
+            baseOptions: {
+              modelAssetPath:
+                'https://storage.googleapis.com/mediapipe-models/hand_landmarker/hand_landmarker/float16/1/hand_landmarker.task',
+              delegate: 'GPU',
+            },
+            runningMode: 'VIDEO',
+            numHands: 2,
+            minHandDetectionConfidence: 0.5,
+            minHandPresenceConfidence: 0.5,
+            minTrackingConfidence: 0.5,
+          }) as unknown as HandGestureControl['landmarker'];
+        } catch {
+          // Weak iGPU / blocked GPU delegate — fall back to CPU instead of giving up.
+          this.cb.onStatus('GPU hand model failed — trying CPU fallback…');
+          this.landmarker = await mod.HandLandmarker.createFromOptions(vision, {
+            baseOptions: {
+              modelAssetPath:
+                'https://storage.googleapis.com/mediapipe-models/hand_landmarker/hand_landmarker/float16/1/hand_landmarker.task',
+              delegate: 'CPU',
+            },
+            runningMode: 'VIDEO',
+            numHands: 2,
+            minHandDetectionConfidence: 0.5,
+            minHandPresenceConfidence: 0.5,
+            minTrackingConfidence: 0.5,
+          }) as unknown as HandGestureControl['landmarker'];
+        }
+        if (!this.landmarker || typeof (this.landmarker as any).detectForVideo !== 'function') {
+          throw new Error('hand landmarker unavailable');
+        }
+        this.modelReady = true;
+      } catch (e: unknown) {
+        this.setStage('MODEL_ERROR');
+        const msg = e instanceof Error ? e.message : String(e);
+        if (/fetch|network|cdn|model/i.test(msg)) this.cb.onError('Hand model failed to load (offline?) — gestures OFF.');
+        else this.cb.onError(`Gesture model error — ${msg.slice(0, 120)}`);
+        return;
       }
-    } catch (e: unknown) {
-      this.stop();
-      this.setStage('MODEL_ERROR');
-      const msg = e instanceof Error ? e.message : String(e);
-      if (/fetch|network|cdn|model/i.test(msg)) this.cb.onError('Hand model failed to load (offline?) — gestures OFF.');
-      else this.cb.onError(`Gesture model error — ${msg.slice(0, 120)}`);
-      return;
     }
-    // Phase 3 — camera.
+    // Phase 3 — camera (fresh stream every enable; old one was released).
     this.video = document.createElement('video');
     this.video.setAttribute('playsinline', 'true');
     this.video.muted = true;
@@ -175,10 +196,9 @@ export class HandGestureControl {
         audio: false,
       });
     } catch (e: unknown) {
-      this.stop();
+      this.setStage('NO_CAMERA_PERMISSION');
       const msg = e instanceof Error ? e.message : String(e);
       if (/denied|permission|NotAllowed/i.test(msg)) {
-        this.setStage('NO_CAMERA_PERMISSION');
         this.cb.onStatus('HAND CONTROL — CAMERA ACCESS REQUIRED. Voice, orb and phone control keep working.');
         this.cb.onError('Camera blocked — gestures OFF, mouse/touch still works.');
       } else {
@@ -195,7 +215,7 @@ export class HandGestureControl {
         throw new Error('camera frame not ready');
       }
     } catch (e: unknown) {
-      this.stop();
+      this.stopTracks();
       this.setStage('CAMERA_ERROR');
       const msg = e instanceof Error ? e.message : String(e);
       this.cb.onError(`Camera error — ${msg.slice(0, 120)}`);
@@ -203,24 +223,35 @@ export class HandGestureControl {
     }
 
     this.running = true;
+    this.loggedStructure = false;
+    this.loopGen++;
     this.setStage('READY');
     this.cb.onStatus('Gestures ON — move to orbit, open/close to expand, two hands to zoom, flick ↑ for voice');
-    this.loop();
+    this.loop(this.loopGen);
   }
 
-  private loop = () => {
-    if (!this.running) return;
-    this.raf = requestAnimationFrame(this.loop);
+  private loop = (gen: number) => {
+    // Generation guard: a stale loop from a previous enable can never
+    // process frames (exactly one active loop exists).
+    if (!this.running || gen !== this.loopGen) return;
+    this.raf = requestAnimationFrame(() => this.loop(gen));
     const v = this.video;
     const lm = this.landmarker;
+    // No inference before READY: landmarker must exist (model gate).
     if (!v || !lm || v.readyState < 2 || v.videoWidth === 0) return;
     if (v.currentTime === this.lastVideoT) return;
     this.lastVideoT = v.currentTime;
-    let res: { landmarks?: Array<Array<{ x: number; y: number }>> };
+    let res: { landmarks?: Array<Array<{ x: number; y: number }>>; handedness?: unknown };
     try {
       res = lm.detectForVideo(v, performance.now()) as unknown as typeof res;
     } catch {
       return;
+    }
+    if (!this.loggedStructure) {
+      this.loggedStructure = true;
+      const keys = res && typeof res === 'object' ? Object.keys(res) : [];
+      const counts = Array.isArray(res.landmarks) ? res.landmarks.map((h) => (Array.isArray(h) ? h.length : -1)) : [];
+      gestureDiag('model result', `keys=[${keys.join(',')}] hands=${counts.length} lmCounts=[${counts.join(',')}] handedness=${res.handedness !== undefined ? 'present' : 'absent'}`);
     }
     // Validate every hand: incomplete landmark sets are skipped, never
     // fabricated. Zero valid hands == NO_HAND (resets transient state).
@@ -320,29 +351,46 @@ export class HandGestureControl {
     this.cb.onSwipe(Math.abs(dx) > Math.abs(dy) ? (dx > 0 ? 'right' : 'left') : (dy > 0 ? 'down' : 'up'));
   }
 
-  stop() {
-    this.running = false;
-    this.setStage('UNINITIALIZED');
-    cancelAnimationFrame(this.raf);
+  /** Release camera + video element only; the loaded model stays READY. */
+  private stopTracks() {
     try { this.video?.pause(); } catch { /* noop */ }
     try {
       const s = this.video?.srcObject as MediaStream | null;
-      s?.getTracks().forEach((t) => t.stop());
+      s?.getTracks().forEach((t) => { try { t.stop(); } catch { /* noop */ } });
     } catch { /* noop */ }
+    if (this.video) {
+      try { (this.video as any).srcObject = null; } catch { /* noop */ }
+    }
     if (this.stream) { try { this.stream.getTracks().forEach((t) => t.stop()); } catch { /* noop */ } }
     this.stream = null;
     this.video = null;
-    try { (this.landmarker as unknown as { close?: () => void })?.close?.(); } catch { /* noop */ }
-    this.landmarker = null;
+  }
+
+  stop() {
+    // Invalidate any in-flight loop generation first: a stale loop can never
+    // process another frame even if its rAF already fired.
+    this.loopGen++;
+    this.running = false;
+    cancelAnimationFrame(this.raf);
+    this.stopTracks();
     this.lastSingle = null;
     this.lastMid = null;
     this.lastSpread = 0;
     this.trail = [];
     this.expandSm = 0;
     try { this.cb.onExpand(0); } catch { /* noop */ }
+    this.setStage('UNINITIALIZED');
   }
 
-  dispose() { this.stop(); }
+  dispose() {
+    this.stop();
+    try { (this.landmarker as unknown as { close?: () => void })?.close?.(); } catch { /* noop */ }
+    this.landmarker = null;
+    this.modelReady = false;
+  }
+
+  /** True once the model loaded (READY gate for inference). */
+  get isModelReady() { return this.modelReady; }
 }
 
 export { ORB_GESTURE };
