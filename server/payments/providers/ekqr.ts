@@ -107,21 +107,32 @@ export class EkqrProvider implements PaymentProvider {
       throw new Error(`EKQR create order HTTP ${status}`.slice(0, 200));
     }
     // Echo must match our order id (binds response to request).
-    const echoId = String(pick<string>(json, ['order_id', 'orderId', 'merchant_order_id']) || '');
+    const echoId = String(pick<string>(body, ['order_id', 'orderId', 'merchant_order_id']) || '');
     if (echoId && echoId !== args.internalOrderId) {
       throw new Error('EKQR order id mismatch');
     }
-    const upiIntent = String(pick<string>(json, ['upi_intent', 'upiIntent', 'upi_link', 'intent_url']) || '');
-    const qrCode = String(pick<string>(json, ['qr_code', 'qrCode', 'qr']) || '');
-    const payUrl = String(pick<string>(json, ['pay_url', 'payUrl', 'payment_url', 'checkout_url', 'hosted_url']) || '');
+    // Some gateways nest the payload under `data` — unwrap one level.
+    const body = (json && typeof json === 'object' && (json as any).data && typeof (json as any).data === 'object')
+      ? (json as any).data as Record<string, unknown>
+      : json;
+    const upiIntent = String(pick<string>(body, ['upi_intent', 'upiIntent', 'upi_link', 'intent_url']) || '');
+    const qrCode = String(pick<string>(body, ['qr_code', 'qrCode', 'qr', 'qr_string', 'qrString', 'qr_image', 'qrImage']) || '');
+    const payUrl = String(pick<string>(body, ['pay_url', 'payUrl', 'payment_url', 'checkout_url', 'hosted_url', 'payment_link', 'short_url']) || '');
     if (!upiIntent && !qrCode && !payUrl) {
+      // Log top-level keys only (no values/secrets) so the merchant can map
+      // the real field names from Render logs.
+      try {
+        const keys = json && typeof json === 'object' ? Object.keys(json).join(',') : typeof json;
+        const dataKeys = body !== json && body && typeof body === 'object' ? Object.keys(body).join(',') : '';
+        console.error(`[EKQR] create order response keys: [${keys}]${dataKeys ? ` data:[${dataKeys}]` : ''}`);
+      } catch { /* log-only */ }
       throw new Error('EKQR response has no upi_intent / qr_code / pay_url');
     }
     return {
       providerOrderId: echoId || args.internalOrderId,
       checkoutUrl: payUrl || upiIntent,
-      checkoutExpiresAt: Number(pick<number>(json, ['expires_at', 'expireAt', 'expiresAt']) || 0) || 0,
-      state: String(pick<string>(json, ['status', 'state']) || 'PENDING'),
+      checkoutExpiresAt: Number(pick<number>(body, ['expires_at', 'expireAt', 'expiresAt']) || 0) || 0,
+      state: String(pick<string>(body, ['status', 'state']) || 'PENDING'),
       upiIntent: upiIntent || undefined,
       qrCode: qrCode || undefined,
       payUrl: payUrl || undefined,
