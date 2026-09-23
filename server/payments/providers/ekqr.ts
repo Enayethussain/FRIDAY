@@ -121,12 +121,18 @@ export class EkqrProvider implements PaymentProvider {
     if (!upiIntent && !qrCode && !payUrl) {
       // Log top-level keys only (no values/secrets) so the merchant can map
       // the real field names from Render logs.
+      let keys = '';
       try {
-        const keys = json && typeof json === 'object' ? Object.keys(json).join(',') : typeof json;
+        const top = json && typeof json === 'object' ? Object.keys(json).join(',') : typeof json;
         const dataKeys = body !== json && body && typeof body === 'object' ? Object.keys(body).join(',') : '';
-        console.error(`[EKQR] create order response keys: [${keys}]${dataKeys ? ` data:[${dataKeys}]` : ''}`);
+        keys = `${top}${dataKeys ? ` data:[${dataKeys}]` : ''}`;
+        console.error(`[EKQR] create order response keys: [${keys}]`);
       } catch { /* log-only */ }
-      throw new Error('EKQR response has no upi_intent / qr_code / pay_url');
+      // Surface the gateway's own message (e.g. "Invalid amount") when present.
+      const gwMsg = String(pick<string>(body, ['message', 'msg', 'error', 'reason', 'remark']) || pick<string>(json, ['message', 'msg', 'error']) || '').slice(0, 120);
+      throw new Error(
+        `EKQR response has no upi_intent / qr_code / pay_url${keys ? ` | keys:[${keys.slice(0, 120)}]` : ''}${gwMsg ? ` | ekqr:${gwMsg}` : ''}`.slice(0, 300)
+      );
     }
     return {
       providerOrderId: echoId || args.internalOrderId,

@@ -345,8 +345,11 @@ export function createPaymentRouter(deps: {
         order.failureCode = String(e?.message || 'PROVIDER_ERROR').slice(0, 120);
         order.updatedAt = Date.now();
         store.savePaymentOrder(order);
-        logError(`payment create failed plan=${planId} period=${period}: ${redact(String(e?.message || e)).slice(0, 160)}`);
-        res.status(502).json({ success: false, code: 'ORDER_FAILED', error: 'Payment order create nahi ho paya. Dobara try karo.' });
+        const reason = redact(String(e?.message || e)).slice(0, 200);
+        logError(`payment create failed plan=${planId} period=${period}: ${reason.slice(0, 160)}`);
+        // Pass the short provider reason through so the dashboard notice
+        // itself shows the real cause (merchant is the operator here).
+        res.status(502).json({ success: false, code: 'ORDER_FAILED', error: `Payment order create nahi ho paya. Dobara try karo.${reason ? ` (${reason})` : ''}` });
         return;
       }
       res.json({
