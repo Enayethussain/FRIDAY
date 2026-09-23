@@ -342,7 +342,14 @@ export function createPaymentRouter(deps: {
         checkoutExpiresAt: 0, status: 'created', providerPaymentId: '', failureCode: '',
         expiresAt: now + ORDER_TTL_MS, fulfilledAt: 0, createdAt: now, updatedAt: now,
       };
-      store.savePaymentOrder(order);
+      try {
+        store.savePaymentOrder(order);
+      } catch (e: any) {
+        const reason = redact(String(e?.message || e)).slice(0, 160);
+        logError(`payment order save failed: ${reason}`);
+        res.status(500).json({ success: false, code: 'ORDER_SAVE_FAILED', error: `Payment order save nahi ho paya. Dobara try karo.${reason ? ` (${reason})` : ''}` });
+        return;
+      }
       try {
         const created = await provider.createOrder({
           internalOrderId: orderId,
