@@ -2,7 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { XCircle, Check, Loader2 } from 'lucide-react';
 import { getEntitlements, refreshEntitlements, subscribeEntitlements, type EntitlementSnapshot } from '../services/EntitlementService';
 import { lifecycleMessage } from '../services/BillingService';
-import { getPayPlans, createEkqrOrder, openCheckoutUrl, pollOrderStatus, getMyOrders, formatINR, type BillingPeriod, type OrderHistoryItem } from '../services/PaymentService';
+import { getPayPlans, createEkqrOrder, openCheckoutUrl, pollOrderStatus, getMyOrders, formatINR, loadPayer, savePayer, validatePayer, normMobile, type BillingPeriod, type OrderHistoryItem } from '../services/PaymentService';
 import type { ThemeAccent } from '../types';
 import { THEMES } from '../utils/theme';
 
@@ -64,6 +64,10 @@ export function HUDSubscription({ isOpen, onClose, theme }: HUDSubscriptionProps
   const [notice, setNotice] = useState('');
   const [busyKey, setBusyKey] = useState<string | null>(null);
   const [orders, setOrders] = useState<OrderHistoryItem[] | null>(null);
+  // UPI payer identity (EkQR mandates name + 10-digit mobile). Saved on-device.
+  const [payerName, setPayerName] = useState(() => { try { return loadPayer().name; } catch { return ''; } });
+  const [payerMobile, setPayerMobile] = useState(() => { try { return loadPayer().mobile; } catch { return ''; } });
+  const [payerEmail, setPayerEmail] = useState(() => { try { return loadPayer().email || ''; } catch { return ''; } });
 
   const loadPrices = async () => {
     setPricesLoading(true);
@@ -108,10 +112,17 @@ export function HUDSubscription({ isOpen, onClose, theme }: HUDSubscriptionProps
   const tryPurchase = async (plan: 'plus' | 'pro', period: BillingPeriod) => {
     const key = `${plan}:${period}`;
     if (busyKey) return;
+    const payer = { name: payerName.trim(), mobile: normMobile(payerMobile), email: payerEmail.trim() };
+    const payerErr = validatePayer({ name: payer.name, mobile: payerMobile, email: payer.email });
+    if (payerErr) {
+      setNotice(`${payerErr} Pehle upar Naam + Mobile likho, phir Pay dabao.`);
+      return;
+    }
+    savePayer({ name: payer.name, mobile: payerMobile, email: payer.email });
     setBusyKey(key);
     setNotice('');
     try {
-      const order = await createEkqrOrder(plan, period);
+      const order = await createEkqrOrder(plan, period, payer);
       setNotice(`Order ${order.orderId} bana — UPI app me payment complete karo. Verify hote hi plan activate hoga.`);
       openCheckoutUrl(order.checkoutUrl);
       const final = await pollOrderStatus(order.orderId, {
@@ -242,6 +253,37 @@ export function HUDSubscription({ isOpen, onClose, theme }: HUDSubscriptionProps
           <p className="mb-4 text-xs text-sky-300 bg-sky-500/10 border border-sky-500/30 rounded-xl px-3 py-2">{statusLine}</p>
         )}
 
+        <div className="mb-3 rounded-2xl border border-slate-700/80 bg-slate-900/60 p-3">
+          <h3 className="font-bold text-xs text-slate-200 mb-1">UPI payment details <span className="font-mono font-normal text-slate-500">(EkQR receipt ke liye)</span></h3>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+            <input
+              value={payerName}
+              onChange={(e) => setPayerName(e.target.value)}
+              placeholder="Apna naam *"
+              autoComplete="name"
+              maxLength={60}
+              className="px-3 py-2 min-h-[44px] rounded-xl bg-slate-800 border border-slate-700 text-white text-sm placeholder:text-slate-500 focus:outline-none focus:border-amber-500"
+            />
+            <input
+              value={payerMobile}
+              onChange={(e) => setPayerMobile(e.target.value)}
+              placeholder="10-digit mobile *"
+              autoComplete="tel"
+              inputMode="numeric"
+              maxLength={13}
+              className="px-3 py-2 min-h-[44px] rounded-xl bg-slate-800 border border-slate-700 text-white text-sm placeholder:text-slate-500 focus:outline-none focus:border-amber-500"
+            />
+          </div>
+          <input
+            value={payerEmail}
+            onChange={(e) => setPayerEmail(e.target.value)}
+            placeholder="Email (optional)"
+            autoComplete="email"
+            inputMode="email"
+            maxLength={80}
+            className="mt-2 w-full px-3 py-2 min-h-[44px] rounded-xl bg-slate-800 border border-slate-700 text-white text-sm placeholder:text-slate-500 focus:outline-none focus:border-amber-500"
+          />
+        </div>
         <div className="space-y-3">
           {card('FREE · ₹0', FREE_FEATURES, (
             <div className="text-xs font-mono text-slate-400">Always free · App Open Ads enabled</div>

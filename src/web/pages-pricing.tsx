@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { PageShell } from './layout';
 import { apiUrl } from '../lib/serverUrl';
-import { createEkqrOrder, openCheckoutUrl } from '../services/PaymentService';
+import { createEkqrOrder, openCheckoutUrl, loadPayer, savePayer, validatePayer, normMobile } from '../services/PaymentService';
 
 const SUPPORT_EMAIL = (import.meta as any).env?.VITE_CONTACT_EMAIL || '';
 const SUPPORT_URL = (import.meta as any).env?.VITE_SUPPORT_URL || '';
@@ -67,6 +67,9 @@ export function PricingPage() {
   const [loading, setLoading] = useState(true);
   const [notice, setNotice] = useState('');
   const [busyKey, setBusyKey] = useState<string | null>(null);
+  const [payerName, setPayerName] = useState(() => { try { return loadPayer().name; } catch { return ''; } });
+  const [payerMobile, setPayerMobile] = useState(() => { try { return loadPayer().mobile; } catch { return ''; } });
+  const [payerEmail, setPayerEmail] = useState(() => { try { return loadPayer().email || ''; } catch { return ''; } });
 
   const load = async () => {
     setLoading(true);
@@ -107,12 +110,20 @@ export function PricingPage() {
   const onPay = async (plan: 'plus' | 'pro', period: 'monthly' | '3_month' | 'yearly') => {
     const key = `${plan}:${period}`;
     if (busyKey) return;
+    const payerErr = validatePayer({ name: payerName, mobile: payerMobile, email: payerEmail });
+    if (payerErr) {
+      const help = `${payerErr} Pehle neeche Naam + Mobile likho, phir Pay dabao.${supportSuffix()}`;
+      setNotice(help);
+      try { window.alert(help); } catch { /* alert best-effort */ }
+      return;
+    }
+    savePayer({ name: payerName.trim(), mobile: payerMobile, email: payerEmail.trim() });
     setBusyKey(key);
     setNotice('');
     try {
       // No Play dependency: server EKQR order -> UPI intent / pay page.
       // UPI deep-links auto-open the user's UPI app (GPay/PhonePe/Paytm).
-      const order = await createEkqrOrder(plan, period);
+      const order = await createEkqrOrder(plan, period, { name: payerName.trim(), mobile: normMobile(payerMobile), email: payerEmail.trim() });
       openCheckoutUrl(order.checkoutUrl);
       nav(`/payment/success?orderId=${encodeURIComponent(order.orderId)}`);
     } catch (e: any) {
@@ -170,6 +181,37 @@ export function PricingPage() {
           {notice}
         </p>
       )}
+      <div className="mt-4 rounded-2xl border border-slate-800 bg-slate-900/50 p-4">
+        <h2 className="font-bold text-sm text-slate-100 mb-1">UPI payment details <span className="font-mono font-normal text-slate-500">(EkQR receipt ke liye — Pay se pehle bhoro)</span></h2>
+        <div className="grid gap-2 sm:grid-cols-3">
+          <input
+            value={payerName}
+            onChange={(e) => setPayerName(e.target.value)}
+            placeholder="Apna naam *"
+            autoComplete="name"
+            maxLength={60}
+            className="px-3 py-2.5 min-h-[44px] rounded-xl bg-black/40 border border-slate-800 text-white text-sm placeholder:text-slate-500 focus:outline-none focus:border-amber-500"
+          />
+          <input
+            value={payerMobile}
+            onChange={(e) => setPayerMobile(e.target.value)}
+            placeholder="10-digit mobile *"
+            autoComplete="tel"
+            inputMode="numeric"
+            maxLength={13}
+            className="px-3 py-2.5 min-h-[44px] rounded-xl bg-black/40 border border-slate-800 text-white text-sm placeholder:text-slate-500 focus:outline-none focus:border-amber-500"
+          />
+          <input
+            value={payerEmail}
+            onChange={(e) => setPayerEmail(e.target.value)}
+            placeholder="Email (optional)"
+            autoComplete="email"
+            inputMode="email"
+            maxLength={80}
+            className="px-3 py-2.5 min-h-[44px] rounded-xl bg-black/40 border border-slate-800 text-white text-sm placeholder:text-slate-500 focus:outline-none focus:border-amber-500"
+          />
+        </div>
+      </div>
       <div className="grid gap-4 md:grid-cols-3 mt-6">
         <div className="rounded-2xl border border-slate-800 bg-slate-900/50 p-5 flex flex-col">
           <h2 className="font-display font-bold text-lg">FREE</h2>

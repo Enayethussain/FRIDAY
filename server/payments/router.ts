@@ -310,6 +310,22 @@ export function createPaymentRouter(deps: {
         res.status(400).json({ success: false, code: 'INVALID_PERIOD', error: 'Ye billing period available nahi hai.' });
         return;
       }
+      // EkQR mandates customer identity: name required, 10-digit mobile required.
+      const customerName = cleanStr(body.customer_name ?? body.customerName ?? '', 60);
+      const mobileDigits = cleanStr(body.customer_mobile ?? body.customerMobile ?? '', 16).replace(/\D/g, '').replace(/^91(?=\d{10}$)/, '');
+      const customerEmail = cleanStr(body.customer_email ?? body.customerEmail ?? '', 80);
+      if (!customerName) {
+        res.status(400).json({ success: false, code: 'CUSTOMER_NAME_REQUIRED', error: 'Apna naam likho (EkQR customer name required).' });
+        return;
+      }
+      if (!/^[6-9]\d{9}$/.test(mobileDigits)) {
+        res.status(400).json({ success: false, code: 'CUSTOMER_MOBILE_REQUIRED', error: 'Sahi 10-digit mobile number dalo (UPI receipt ke liye).' });
+        return;
+      }
+      if (customerEmail && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(customerEmail)) {
+        res.status(400).json({ success: false, code: 'CUSTOMER_EMAIL_INVALID', error: 'Email sahi likho ya khaali chhodo.' });
+        return;
+      }
       if (!provider.isConfigured()) {
         res.status(501).json({ success: false, code: 'PAYMENTS_NOT_CONFIGURED', error: 'Web payments are not active yet.' });
         return;
@@ -334,6 +350,7 @@ export function createPaymentRouter(deps: {
           redirectUrl,
           expireAfterSec: 1200,
           planLabel: `FRIDAY ${planId === 'pro' ? 'Pro' : 'Plus'} ${period}`,
+          customer: { name: customerName, mobile: mobileDigits, email: customerEmail || undefined },
         });
         order.providerOrderId = created.providerOrderId;
         order.checkoutUrl = created.checkoutUrl;

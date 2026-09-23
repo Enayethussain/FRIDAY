@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import { PageShell } from './layout';
 import { PLANS, PLAN_ORDER, type WebPlanId } from './plans';
 import { getEntitlements, refreshEntitlements } from '../services/EntitlementService';
-import { createOrder, getPaymentPlans, type PayPlan } from '../services/PaymentService';
+import { createOrder, getPaymentPlans, loadPayer, savePayer, validatePayer, normMobile, type PayPlan } from '../services/PaymentService';
 
 const SUPPORT_EMAIL = (import.meta as any).env?.VITE_CONTACT_EMAIL || '';
 const SUPPORT_URL = (import.meta as any).env?.VITE_SUPPORT_URL || '';
@@ -49,6 +49,9 @@ export function UpgradePage() {
   const [busyPlan, setBusyPlan] = useState<WebPlanId | null>(null);
   const [payPlans, setPayPlans] = useState<PayPlan[]>([]);
   const [payConfigured, setPayConfigured] = useState(false);
+  const [payerName, setPayerName] = useState(() => { try { return loadPayer().name; } catch { return ''; } });
+  const [payerMobile, setPayerMobile] = useState(() => { try { return loadPayer().mobile; } catch { return ''; } });
+  const [payerEmail, setPayerEmail] = useState(() => { try { return loadPayer().email || ''; } catch { return ''; } });
 
   useEffect(() => {
     let alive = true;
@@ -90,10 +93,18 @@ export function UpgradePage() {
       setNotice(`Secure UPI payment via EKQR (GPay, PhonePe, Paytm) abhi active nahi hai. Dobara try karo.${supportSuffix()}`);
       return;
     }
+    const payerErr = validatePayer({ name: payerName, mobile: payerMobile, email: payerEmail });
+    if (payerErr) {
+      const help = `${payerErr} Pehle neeche Naam + Mobile likho, phir upgrade dabao.${supportSuffix()}`;
+      setNotice(help);
+      try { window.alert(help); } catch { /* alert best-effort */ }
+      return;
+    }
+    savePayer({ name: payerName.trim(), mobile: payerMobile, email: payerEmail.trim() });
     setNotice('');
     setBusyPlan(plan);
     try {
-      const order = await createOrder(plan);
+      const order = await createOrder(plan, { name: payerName.trim(), mobile: normMobile(payerMobile), email: payerEmail.trim() });
       // Leave FRIDAY for the provider pay page (UPI intent on mobile,
       // dynamic QR on desktop). Verification happens server-side on return.
       window.location.href = order.checkoutUrl;
@@ -142,6 +153,38 @@ export function UpgradePage() {
         <p className="mt-3 inline-block text-xs font-mono px-3 py-1.5 rounded-full border border-slate-700 text-slate-300" aria-live="polite">
           {planChecked ? `CURRENT PLAN: ${currentLabel}` : 'Checking current plan…'}
         </p>
+      </div>
+
+      <div className="max-w-2xl mx-auto mt-6 rounded-2xl border border-slate-800 bg-slate-900/50 p-4">
+        <h2 className="font-bold text-sm text-slate-100 mb-1">UPI payment details <span className="font-mono font-normal text-slate-500">(EkQR receipt ke liye — upgrade se pehle bhoro)</span></h2>
+        <div className="grid gap-2 sm:grid-cols-3">
+          <input
+            value={payerName}
+            onChange={(e) => setPayerName(e.target.value)}
+            placeholder="Apna naam *"
+            autoComplete="name"
+            maxLength={60}
+            className="px-3 py-2.5 min-h-[44px] rounded-xl bg-black/40 border border-slate-800 text-white text-sm placeholder:text-slate-500 focus:outline-none focus:border-amber-500"
+          />
+          <input
+            value={payerMobile}
+            onChange={(e) => setPayerMobile(e.target.value)}
+            placeholder="10-digit mobile *"
+            autoComplete="tel"
+            inputMode="numeric"
+            maxLength={13}
+            className="px-3 py-2.5 min-h-[44px] rounded-xl bg-black/40 border border-slate-800 text-white text-sm placeholder:text-slate-500 focus:outline-none focus:border-amber-500"
+          />
+          <input
+            value={payerEmail}
+            onChange={(e) => setPayerEmail(e.target.value)}
+            placeholder="Email (optional)"
+            autoComplete="email"
+            inputMode="email"
+            maxLength={80}
+            className="px-3 py-2.5 min-h-[44px] rounded-xl bg-black/40 border border-slate-800 text-white text-sm placeholder:text-slate-500 focus:outline-none focus:border-amber-500"
+          />
+        </div>
       </div>
 
       <div className="grid gap-4 md:grid-cols-3 mt-8">

@@ -3,6 +3,48 @@
 // backend jobs. Success is NEVER decided here — only backend order status.
 import { apiUrl } from '../lib/serverUrl';
 
+export interface PayerCustomer {
+  name: string;
+  mobile: string;
+  email?: string;
+}
+
+/** Saved UPI payer details (name/mobile reused across checkouts). */
+export function loadPayer(): PayerCustomer {
+  try {
+    return {
+      name: localStorage.getItem('friday_payer_name') || '',
+      mobile: localStorage.getItem('friday_payer_mobile') || '',
+      email: localStorage.getItem('friday_payer_email') || '',
+    };
+  } catch {
+    return { name: '', mobile: '', email: '' };
+  }
+}
+
+export function savePayer(p: PayerCustomer): void {
+  try {
+    localStorage.setItem('friday_payer_name', p.name);
+    localStorage.setItem('friday_payer_mobile', p.mobile);
+    localStorage.setItem('friday_payer_email', p.email || '');
+  } catch { /* best-effort */ }
+}
+
+/** Name required, 10-digit mobile required (EkQR mandates both). */
+export function validatePayer(p: PayerCustomer): string | null {
+  if (!p.name.trim()) return 'Apna naam likho (EkQR customer name required).';
+  const digits = p.mobile.replace(/\D/g, '').replace(/^91(?=\d{10}$)/, '');
+  if (!/^[6-9]\d{9}$/.test(digits)) return 'Sahi 10-digit mobile number dalo (UPI receipt ke liye).';
+  if (p.email && p.email.trim() && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(p.email.trim())) {
+    return 'Email sahi likho ya khaali chhodo.';
+  }
+  return null;
+}
+
+export function normMobile(mobile: string): string {
+  return mobile.replace(/\D/g, '').replace(/^91(?=\d{10}$)/, '');
+}
+
 export interface PayPlan {
   planId: 'plus' | 'pro';
   name: string;
@@ -80,10 +122,16 @@ export async function getPaymentPlans(): Promise<{ configured: boolean; provider
   }
 }
 
-export async function createOrder(planId: 'plus' | 'pro'): Promise<CreatedOrder> {
+export async function createOrder(planId: 'plus' | 'pro', customer?: PayerCustomer): Promise<CreatedOrder> {
   const { status, json } = await postJson(
     apiUrl('/api/payment/create-order'),
-    { planId, device_id: deviceId() },
+    {
+      planId,
+      device_id: deviceId(),
+      customer_name: customer?.name || undefined,
+      customer_mobile: customer ? normMobile(customer.mobile) : undefined,
+      customer_email: customer?.email?.trim() || undefined,
+    },
     25000
   );
   if (status === 501 || json?.code === 'PAYMENTS_NOT_CONFIGURED') {
@@ -218,10 +266,17 @@ export interface EkqrOrder {
 }
 
 /** Creates an EKQR order server-side. Amount comes from the server table. */
-export async function createEkqrOrder(planId: 'plus' | 'pro', period: BillingPeriod): Promise<EkqrOrder> {
+export async function createEkqrOrder(planId: 'plus' | 'pro', period: BillingPeriod, customer?: PayerCustomer): Promise<EkqrOrder> {
   const { status, json } = await postJson(
     apiUrl('/api/payment/create-order'),
-    { planId, period, device_id: deviceId() },
+    {
+      planId,
+      period,
+      device_id: deviceId(),
+      customer_name: customer?.name || undefined,
+      customer_mobile: customer ? normMobile(customer.mobile) : undefined,
+      customer_email: customer?.email?.trim() || undefined,
+    },
     25000
   );
   if (status === 501 || json?.code === 'PAYMENTS_NOT_CONFIGURED') {

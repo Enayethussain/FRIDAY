@@ -107,7 +107,7 @@ export class EkqrProvider implements PaymentProvider {
     return { 'Content-Type': 'application/json', Authorization: `Bearer ${env('EKQR_API_KEY')}` };
   }
 
-  async createOrder(args: { internalOrderId: string; amountPaise: number; redirectUrl: string; expireAfterSec: number; planLabel?: string }): Promise<ProviderOrderResult> {
+  async createOrder(args: { internalOrderId: string; amountPaise: number; redirectUrl: string; expireAfterSec: number; planLabel?: string; customer?: { name: string; mobile: string; email?: string } }): Promise<ProviderOrderResult> {
     if (!this.isConfigured()) throw new Error('EKQR not configured (EKQR_BASE_URL / EKQR_API_KEY missing)');
     const url = `${base()}${env('EKQR_CREATE_PATH', '/api/create_order')}`;
     // Per portal.ekqr.in docs: auth `key` lives IN the JSON body.
@@ -120,6 +120,9 @@ export class EkqrProvider implements PaymentProvider {
         client_txn_id: args.internalOrderId,
         amount: docsAmount(args.amountPaise),
         p_info: (args.planLabel || 'FRIDAY plan').slice(0, 60),
+        customer_name: args.customer?.name || undefined,
+        customer_mobile: args.customer?.mobile || undefined,
+        customer_email: args.customer?.email || undefined,
         redirect_url: args.redirectUrl,
       }),
     });
