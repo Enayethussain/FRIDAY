@@ -90,7 +90,7 @@ export async function createOrder(planId: 'plus' | 'pro'): Promise<CreatedOrder>
     throw new Error('Secure UPI payment via EKQR (GPay, PhonePe, Paytm) abhi active nahi hai. Dobara try karo ya support se sampark karo.');
   }
   if (!json?.success || !json?.checkoutUrl || !json?.orderId) {
-    throw new Error(String(json?.error || 'Payment order create nahi ho paya. UPI app khula nahi to dobara Try karo.'));
+    throw new Error(String(json?.error || 'Payment order create nahi ho paya.'));
   }
   return {
     orderId: String(json.orderId),
@@ -228,7 +228,7 @@ export async function createEkqrOrder(planId: 'plus' | 'pro', period: BillingPer
     throw new Error('Secure UPI payment via EKQR (GPay, PhonePe, Paytm) abhi active nahi hai. Dobara try karo ya support se sampark karo.');
   }
   if (!json?.success || !json?.orderId) {
-    throw new Error(String(json?.error || 'Payment order create nahi ho paya. UPI app khula nahi to dobara Try karo.'));
+    throw new Error(String(json?.error || 'Payment order create nahi ho paya.'));
   }
   const checkoutUrl = String(json.checkoutUrl || json.pay_url || json.upi_intent || '');
   if (!checkoutUrl) throw new Error('Payment link nahi mila. Dobara try karo.');
