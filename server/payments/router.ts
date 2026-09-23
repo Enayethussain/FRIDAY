@@ -386,8 +386,11 @@ export function createPaymentRouter(deps: {
         period, expiresAt: order.expiresAt,
       });
     } catch (e: any) {
-      logError(`payment create exception: ${redact(String(e?.message || e)).slice(0, 160)}`);
-      res.status(500).json({ success: false, code: 'SERVER_ERROR', error: 'Payment order create nahi ho paya.' });
+      const exMsg = redact(String(e?.message || e)).slice(0, 200);
+      logError(`payment create exception: ${exMsg.slice(0, 160)}`);
+      // Temporary merchant diagnostic: include the exception text so the
+      // dashboard notice reveals WHERE valid-data orders die (outer try).
+      res.status(500).json({ success: false, code: 'SERVER_ERROR', error: `Payment order create nahi ho paya.${exMsg ? ` (${exMsg})` : ''}` });
     }
   });
 
