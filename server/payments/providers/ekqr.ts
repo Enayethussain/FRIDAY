@@ -11,7 +11,7 @@
 //   EKQR_WEBHOOK_SECRET         HMAC-SHA256 hex secret (REQUIRED for webhooks)
 //   EKQR_WEBHOOK_SIGNATURE_HEADER  default: x-ekqr-signature
 //   EKQR_AMOUNT_UNIT            paise | inr (default: paise)
-//   EKQR_CREATE_PATH            default: /create_order
+//   EKQR_CREATE_PATH            default: /api/create_order (portal.ekqr.in)
 //   EKQR_STATUS_PATH            default: /check_order_status
 //
 // Field names accepted from EKQR are tolerant on READ (documented variants)
@@ -87,7 +87,7 @@ export class EkqrProvider implements PaymentProvider {
   async createOrder(args: { internalOrderId: string; amountPaise: number; redirectUrl: string; expireAfterSec: number }): Promise<ProviderOrderResult> {
     if (!this.isConfigured()) throw new Error('EKQR not configured (EKQR_BASE_URL / EKQR_API_KEY missing)');
     const amount = amountUnit() === 'inr' ? Math.round(args.amountPaise / 100) : args.amountPaise;
-    const url = `${base()}${env('EKQR_CREATE_PATH', '/create_order')}`;
+    const url = `${base()}${env('EKQR_CREATE_PATH', '/api/create_order')}`;
     const { status, json } = await httpJson(url, {
       method: 'POST',
       headers: this.authHeaders(),
