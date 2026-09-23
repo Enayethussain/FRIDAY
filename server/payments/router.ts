@@ -322,8 +322,8 @@ export function createPaymentRouter(deps: {
         res.status(400).json({ success: false, code: 'CUSTOMER_MOBILE_REQUIRED', error: 'Sahi 10-digit mobile number dalo (UPI receipt ke liye).' });
         return;
       }
-      if (customerEmail && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(customerEmail)) {
-        res.status(400).json({ success: false, code: 'CUSTOMER_EMAIL_INVALID', error: 'Email sahi likho ya khaali chhodo.' });
+      if (!customerEmail || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(customerEmail)) {
+        res.status(400).json({ success: false, code: 'CUSTOMER_EMAIL_REQUIRED', error: 'Sahi email likho (EkQR customer email required).' });
         return;
       }
       if (!provider.isConfigured()) {

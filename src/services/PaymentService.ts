@@ -30,13 +30,13 @@ export function savePayer(p: PayerCustomer): void {
   } catch { /* best-effort */ }
 }
 
-/** Name required, 10-digit mobile required (EkQR mandates both). */
+/** Name + mobile + email required (EkQR mandates all three). */
 export function validatePayer(p: PayerCustomer): string | null {
   if (!p.name.trim()) return 'Apna naam likho (EkQR customer name required).';
   const digits = p.mobile.replace(/\D/g, '').replace(/^91(?=\d{10}$)/, '');
   if (!/^[6-9]\d{9}$/.test(digits)) return 'Sahi 10-digit mobile number dalo (UPI receipt ke liye).';
-  if (p.email && p.email.trim() && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(p.email.trim())) {
-    return 'Email sahi likho ya khaali chhodo.';
+  if (!p.email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(p.email.trim())) {
+    return 'Sahi email likho (EkQR customer email required).';
   }
   return null;
 }

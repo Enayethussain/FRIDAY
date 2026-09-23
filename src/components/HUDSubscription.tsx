@@ -277,7 +277,7 @@ export function HUDSubscription({ isOpen, onClose, theme }: HUDSubscriptionProps
           <input
             value={payerEmail}
             onChange={(e) => setPayerEmail(e.target.value)}
-            placeholder="Email (optional)"
+            placeholder="Email *"
             autoComplete="email"
             inputMode="email"
             maxLength={80}
