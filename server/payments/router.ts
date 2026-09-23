@@ -4,7 +4,7 @@
 // Server-side only. Plan/amount always come from server plans; the frontend
 // amount is never trusted. Plans activate ONLY from verified provider state.
 import express from 'express';
-import { paymentPlans, publicPlans } from './plans.js';
+import { paymentPlans, publicPlans, periodPrices, parsePeriod, PERIOD_DAYS, type BillingPeriod } from './plans.js';
 import type { FridayStore } from '../store.js';
 import type { PaymentOrder, PaymentProvider } from './types.js';
 
@@ -40,6 +40,119 @@ function newOrderId(): string {
 
 function newRefundId(): string {
   return `frd_rfd_${Date.now().toString(36)}${Math.random().toString(36).slice(2, 8)}`;
+}
+
+export interface WebhookDeps {
+  store: FridayStore;
+  provider: PaymentProvider;
+  redact: (s: string) => string;
+  log: (msg: string) => void;
+  logError: (msg: string) => void;
+}
+
+/**
+ * Shared webhook handler (single implementation for /api/payment/webhook,
+ * /api/payment-webhook and /api/ekqr-webhook). Raw body, provider
+ * authentication, idempotent event keys, re-query before touching
+ * entitlements, user data never deleted.
+ */
+export function createWebhookHandler(deps: WebhookDeps) {
+  const { store, provider, redact, logError } = deps;
+  // Per-IP rate limit buckets local to webhook traffic.
+  const buckets = new Map<string, { count: number; windowStart: number }>();
+  return async (req: express.Request, res: express.Response) => {
+    try {
+      const ip = clientIp(req);
+      const k = `webhook:${ip}`;
+      const now = Date.now();
+      const e = buckets.get(k);
+      if (!e || now - e.windowStart > 60000) {
+        buckets.set(k, { count: 1, windowStart: now });
+      } else {
+        e.count += 1;
+        if (e.count > 120) {
+          res.status(429).json({ success: false, code: 'RATE_LIMITED' });
+          return;
+        }
+      }
+      const raw = typeof (req as any).rawBody === 'string' && (req as any).rawBody
+        ? String((req as any).rawBody)
+        : Buffer.isBuffer(req.body) ? req.body.toString('utf8') : String(req.body || '');
+      const headers: Record<string, string | undefined> = {};
+      for (const [hk, v] of Object.entries(req.headers)) {
+        headers[hk.toLowerCase()] = Array.isArray(v) ? v[0] : String(v ?? '');
+      }
+      const verified = await provider.verifyWebhook(raw, headers);
+      if (!verified) {
+        logError('payment webhook rejected (bad auth)');
+        res.status(401).json({ success: false, code: 'BAD_SIGNATURE' });
+        return;
+      }
+      const eventKey = `${provider.name}:${verified.eventType}:${verified.providerOrderId}:${verified.providerPaymentId || 'none'}`;
+      if (store.hasWebhookEvent(eventKey)) {
+        res.json({ success: true, duplicate: true });
+        return;
+      }
+      // Source of truth: re-query provider before touching entitlements.
+      const order = store.findPaymentOrderByProvider(provider.name, verified.providerOrderId)
+        || store.getPaymentOrder(verified.providerOrderId);
+      let note = `event=${verified.eventType}`;
+      if (order) {
+        const st = await provider.getPaymentStatus(order.providerOrderId || order.orderId).catch(() => null);
+        if (st && st.state === 'COMPLETED') {
+          if (st.amountPaise === order.amount * 100) {
+            order.status = 'success';
+            order.providerPaymentId = st.providerPaymentId || verified.providerPaymentId;
+            order.updatedAt = Date.now();
+            store.savePaymentOrder(order);
+            note += fulfill(order, order.providerPaymentId, 'webhook') ? ' fulfilled' : ' already-fulfilled';
+          } else {
+            order.status = 'failed';
+            order.failureCode = 'AMOUNT_MISMATCH';
+            order.updatedAt = Date.now();
+            store.savePaymentOrder(order);
+            note += ' amount-mismatch';
+          }
+        } else if (st && st.state === 'FAILED') {
+          const fresh = store.getPaymentOrder(order.orderId) || order;
+          if (fresh.status !== 'fulfilled' && fresh.status !== 'refunded') {
+            fresh.status = 'failed';
+            fresh.failureCode = st.rawCode || 'FAILED';
+            fresh.updatedAt = Date.now();
+            store.savePaymentOrder(fresh);
+          }
+          note += ' marked-failed';
+        } else {
+          note += ' pending-confirmed';
+        }
+        // Refund completion revokes premium per policy (data never deleted).
+        if (verified.eventType === 'pg.refund.completed') {
+          const fresh = store.getPaymentOrder(order.orderId) || order;
+          fresh.status = 'refunded';
+          fresh.updatedAt = Date.now();
+          store.savePaymentOrder(fresh);
+          store.setSubscription(fresh.userKey, {
+            status: 'REFUNDED', productId: '', basePlanId: '', offerId: '',
+            purchaseTokenHash: '', plan: '', billingPeriod: '', startTime: 0,
+            expiryAt: 0, autoRenew: false, autoRenewing: false, cancelReason: 'refunded',
+            acknowledgementState: '', verificationSource: 'payment-webhook', linkedAccountId: fresh.userKey,
+          } as never);
+          note += ' refund-applied';
+        }
+      } else {
+        note += ' unknown-order';
+      }
+      store.saveWebhookEvent({
+        eventKey, provider: provider.name, providerOrderId: verified.providerOrderId,
+        providerPaymentId: verified.providerPaymentId, orderId: order ? order.orderId : '',
+        eventType: verified.eventType, verified: true, processedAt: Date.now(), receivedAt: Date.now(), note,
+      });
+      res.json({ success: true });
+    } catch (err: any) {
+      logError(`payment webhook exception: ${redact(String(err?.message || err)).slice(0, 160)}`);
+      res.status(500).json({ success: false, code: 'SERVER_ERROR' });
+    }
+  };
 }
 
 export function createPaymentRouter(deps: {
@@ -81,9 +194,12 @@ export function createPaymentRouter(deps: {
   function fulfill(o: PaymentOrder, providerPaymentId: string, source: string): boolean {
     const fresh = store.getPaymentOrder(o.orderId);
     if (!fresh || fresh.status === 'fulfilled' || fresh.status === 'refunded') return false;
-    const plans = paymentPlans();
-    const plan = plans[fresh.planId];
-    if (!plan || fresh.amount !== plan.amountINR) {
+    // Amount must match the SERVER period table for (plan, period) — the
+    // frontend amount is never trusted at any step.
+    const table = periodPrices();
+    const row = (table as any)?.[fresh.planId];
+    const expected = row?.[fresh.period as BillingPeriod];
+    if (!expected || fresh.amount !== expected) {
       logError(`payment fulfill refused (amount/plan mismatch) order=${redact(fresh.orderId)}`);
       return false;
     }
@@ -93,6 +209,7 @@ export function createPaymentRouter(deps: {
     fresh.updatedAt = Date.now();
     store.savePaymentOrder(fresh);
     const now = Date.now();
+    const termDays = Number(fresh.durationDays) > 0 ? Number(fresh.durationDays) : 30;
     store.setSubscription(fresh.userKey, {
       status: plan.subscriptionStatus as never,
       productId: '',
@@ -102,7 +219,7 @@ export function createPaymentRouter(deps: {
       plan: fresh.planId === 'pro' ? 'PRO' : 'PLUS',
       billingPeriod: 'MONTHLY',
       startTime: now,
-      expiryAt: now + plan.durationDays * 86400000,
+      expiryAt: now + termDays * 86400000,
       autoRenew: false,
       autoRenewing: false,
       cancelReason: '',
@@ -159,12 +276,22 @@ export function createPaymentRouter(deps: {
     }
   }
 
-  // GET /api/payment/plans — public catalog (no secrets).
+  // GET /api/payment/plans — public catalog with per-period pricing (no secrets).
   r.get('/plans', (_req, res) => {
-    res.json({ success: true, provider: provider.name, configured: provider.isConfigured(), plans: publicPlans() });
+    const table = periodPrices();
+    const periods = (['monthly', '3_month', 'yearly'] as BillingPeriod[]).map((p) => ({
+      period: p,
+      days: PERIOD_DAYS[p],
+    }));
+    res.json({
+      success: true, provider: provider.name, configured: provider.isConfigured(),
+      plans: publicPlans(), periods, prices: table,
+    });
   });
 
-  // POST /api/payment/create-order { planId, device_id }
+  // POST /api/payment/create-order { planId, period, device_id }
+  // planId: plus|pro. period: monthly|3_month|yearly. Amount + term come from
+  // the server period table — never from the request body.
   r.post('/create-order', express.json({ limit: '16kb' }), async (req, res) => {
     try {
       const ip = clientIp(req);
@@ -178,18 +305,23 @@ export function createPaymentRouter(deps: {
         res.status(400).json({ success: false, code: 'INVALID_PLAN', error: 'Ye plan available nahi hai.' });
         return;
       }
+      const period = parsePeriod(body.period ?? body.billing_period ?? 'monthly');
+      if (!period) {
+        res.status(400).json({ success: false, code: 'INVALID_PERIOD', error: 'Ye billing period available nahi hai.' });
+        return;
+      }
       if (!provider.isConfigured()) {
         res.status(501).json({ success: false, code: 'PAYMENTS_NOT_CONFIGURED', error: 'Web payments are not active yet.' });
         return;
       }
       const key = userKey(req, body.device_id ?? body.deviceId);
-      const plans = paymentPlans();
-      const plan = plans[planId];
+      const amount = periodPrices()[planId][period];
       const orderId = newOrderId();
       const now = Date.now();
       const redirectUrl = `${appUrl.replace(/\/$/, '')}/payment/success?orderId=${encodeURIComponent(orderId)}`;
       const order: PaymentOrder = {
-        orderId, userKey: key, planId, amount: plan.amountINR, amountPaise: plan.amountINR * 100,
+        orderId, userKey: key, planId, period, durationDays: PERIOD_DAYS[period],
+        amount, amountPaise: amount * 100,
         currency: 'INR', provider: provider.name, providerOrderId: '', checkoutUrl: '',
         checkoutExpiresAt: 0, status: 'created', providerPaymentId: '', failureCode: '',
         expiresAt: now + ORDER_TTL_MS, fulfilledAt: 0, createdAt: now, updatedAt: now,
@@ -213,14 +345,17 @@ export function createPaymentRouter(deps: {
         order.failureCode = String(e?.message || 'PROVIDER_ERROR').slice(0, 120);
         order.updatedAt = Date.now();
         store.savePaymentOrder(order);
-        logError(`payment create failed plan=${planId}: ${redact(String(e?.message || e)).slice(0, 160)}`);
+        logError(`payment create failed plan=${planId} period=${period}: ${redact(String(e?.message || e)).slice(0, 160)}`);
         res.status(502).json({ success: false, code: 'ORDER_FAILED', error: 'Payment order create nahi ho paya. Dobara try karo.' });
         return;
       }
       res.json({
         success: true, orderId: order.orderId, checkoutUrl: order.checkoutUrl,
+        upi_intent: (created as any)?.upiIntent || undefined,
+        qr_code: (created as any)?.qrCode || undefined,
+        pay_url: (created as any)?.payUrl || undefined,
         amount: order.amount, currency: order.currency, planId: order.planId,
-        expiresAt: order.expiresAt,
+        period, expiresAt: order.expiresAt,
       });
     } catch (e: any) {
       logError(`payment create exception: ${redact(String(e?.message || e)).slice(0, 160)}`);
@@ -259,90 +394,9 @@ export function createPaymentRouter(deps: {
   });
 
   // POST /api/payment/webhook — raw body, provider-authenticated, idempotent.
-  r.post('/webhook', express.raw({ type: '*/*', limit: '64kb' }), async (req, res) => {
-    try {
-      const ip = clientIp(req);
-      if (limited(ip, 'webhook', 120, 60000)) {
-        res.status(429).json({ success: false, code: 'RATE_LIMITED' });
-        return;
-      }
-      const raw = Buffer.isBuffer(req.body) ? req.body.toString('utf8') : String(req.body || '');
-      const headers: Record<string, string | undefined> = {};
-      for (const [k, v] of Object.entries(req.headers)) {
-        headers[k.toLowerCase()] = Array.isArray(v) ? v[0] : String(v ?? '');
-      }
-      const verified = await provider.verifyWebhook(raw, headers);
-      if (!verified) {
-        logError('payment webhook rejected (bad auth)');
-        res.status(401).json({ success: false, code: 'BAD_SIGNATURE' });
-        return;
-      }
-      const eventKey = `${provider.name}:${verified.eventType}:${verified.providerOrderId}:${verified.providerPaymentId || 'none'}`;
-      if (store.hasWebhookEvent(eventKey)) {
-        res.json({ success: true, duplicate: true });
-        return;
-      }
-      // Source of truth: re-query provider before touching entitlements.
-      const order = store.findPaymentOrderByProvider(provider.name, verified.providerOrderId)
-        || store.getPaymentOrder(verified.providerOrderId);
-      let note = `event=${verified.eventType}`;
-      if (order) {
-        const st = await provider.getPaymentStatus(order.providerOrderId || order.orderId).catch(() => null);
-        if (st && st.state === 'COMPLETED') {
-          if (st.amountPaise === order.amount * 100) {
-            order.status = 'success';
-            order.providerPaymentId = st.providerPaymentId || verified.providerPaymentId;
-            order.updatedAt = Date.now();
-            store.savePaymentOrder(order);
-            const granted = fulfill(order, order.providerPaymentId, 'webhook');
-            note += granted ? ' fulfilled' : ' already-fulfilled';
-          } else {
-            order.status = 'failed';
-            order.failureCode = 'AMOUNT_MISMATCH';
-            order.updatedAt = Date.now();
-            store.savePaymentOrder(order);
-            note += ' amount-mismatch';
-          }
-        } else if (st && st.state === 'FAILED') {
-          const fresh = store.getPaymentOrder(order.orderId) || order;
-          if (fresh.status !== 'fulfilled' && fresh.status !== 'refunded') {
-            fresh.status = 'failed';
-            fresh.failureCode = st.rawCode || 'FAILED';
-            fresh.updatedAt = Date.now();
-            store.savePaymentOrder(fresh);
-          }
-          note += ' marked-failed';
-        } else {
-          note += ' pending-confirmed';
-        }
-        // Refund completion revokes premium per policy (data never deleted).
-        if (verified.eventType === 'pg.refund.completed') {
-          const fresh = store.getPaymentOrder(order.orderId) || order;
-          fresh.status = 'refunded';
-          fresh.updatedAt = Date.now();
-          store.savePaymentOrder(fresh);
-          store.setSubscription(fresh.userKey, {
-            status: 'REFUNDED', productId: '', basePlanId: '', offerId: '',
-            purchaseTokenHash: '', plan: '', billingPeriod: '', startTime: 0,
-            expiryAt: 0, autoRenew: false, autoRenewing: false, cancelReason: 'refunded',
-            acknowledgementState: '', verificationSource: 'payment-webhook', linkedAccountId: fresh.userKey,
-          } as never);
-          note += ' refund-applied';
-        }
-      } else {
-        note += ' unknown-order';
-      }
-      store.saveWebhookEvent({
-        eventKey, provider: provider.name, providerOrderId: verified.providerOrderId,
-        providerPaymentId: verified.providerPaymentId, orderId: order ? order.orderId : '',
-        eventType: verified.eventType, verified: true, processedAt: Date.now(), receivedAt: Date.now(), note,
-      });
-      res.json({ success: true });
-    } catch (e: any) {
-      logError(`payment webhook exception: ${redact(String(e?.message || e)).slice(0, 160)}`);
-      res.status(500).json({ success: false, code: 'SERVER_ERROR' });
-    }
-  });
+  // (Same shared handler is also mounted at /api/payment-webhook and
+  // /api/ekqr-webhook in server.ts.)
+  r.post('/webhook', express.raw({ type: '*/*', limit: '64kb' }), createWebhookHandler({ store, provider, redact, log, logError }));
 
   // GET /api/payment/orders?device_id= — own order history (public fields).
   r.get('/orders', (req, res) => {

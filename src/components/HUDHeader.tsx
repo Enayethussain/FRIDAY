@@ -11,8 +11,6 @@ import {
 } from 'lucide-react';
 import {
   AssistantState,
-  EmotionalMetadata,
-  StudyCurriculum,
   ThemeAccent,
   UserProfile,
   WakewordConfig,
@@ -27,42 +25,13 @@ interface HUDHeaderProps {
   isCameraActive: boolean;
   /** Dual-voice indicator: FRIDAY (default) or JARVIS. Minimal pill, existing HUD style. */
   activeVoice?: 'FRIDAY' | 'JARVIS';
-  isScreenWatching?: boolean;
-  curriculum?: StudyCurriculum;
-  notesCount: number;
-  tasksCount: number;
-  filesCount: number;
-  memoriesCount?: number;
-  activeLanguage: string;
-  emotionalMetadata?: EmotionalMetadata;
   authProfile?: UserProfile;
   wakewordConfig?: WakewordConfig;
   wakewordState?: WakewordState;
   onSelectTheme: (theme: ThemeAccent) => void;
-  onToggleCamera: () => void;
-  onToggleScreenWatch?: () => void;
-  onOpenStudyMatrix?: () => void;
-  onOpenNotes: () => void;
-  onOpenTasks: () => void;
-  onOpenFiles: () => void;
-  onOpenLanguages: () => void;
-  onOpenVoiceSettings: () => void;
-  onOpenMemories?: () => void;
-  onOpenAuth?: () => void;
   onOpenWakeword?: () => void;
   onLockSession?: () => void;
-  onOpenEmotionalProcessor?: () => void;
-  onOpenWorkbench?: () => void;
-  onOpenProtocols?: () => void;
-  onOpenKnowledgeGraph?: () => void;
-  onOpenDebrief?: () => void;
-  onOpenCalculator?: () => void;
-  onOpenPrivateVault?: () => void;
-  onOpenRoutinePreferences?: () => void;
-  onOpenDesktopBridge?: () => void;
-  onOpenImageGenerator?: () => void;
-  onOpenVoiceEnrollment?: () => void;
-  isPrivateVaultUnlocked?: boolean;
+  onOpenAuth?: () => void;
 }
 
 function isMobile(): boolean {

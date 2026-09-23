@@ -207,8 +207,3 @@ export class PhonePeProvider implements PaymentProvider {
     return { state: st === 'COMPLETED' ? 'COMPLETED' : st === 'FAILED' ? 'FAILED' : 'PENDING' };
   }
 }
-
-export function selectProvider(): PaymentProvider {
-  void process.env.PAYMENT_PROVIDER; // 'phonepe' (default/only real provider)
-  return new PhonePeProvider();
-}

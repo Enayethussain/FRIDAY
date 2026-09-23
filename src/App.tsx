@@ -1243,51 +1243,16 @@ export default function App() {
         theme={theme}
         isCameraActive={isCameraActive}
         activeVoice={activeVoice}
-        isScreenWatching={isScreenWatching}
-        curriculum={curriculum}
-        notesCount={notes.length}
-        tasksCount={tasks.filter((t) => !t.completed).length}
-        filesCount={files.length}
-        memoriesCount={memories.length}
-        activeLanguage={activeLanguage}
-        emotionalMetadata={emotionalMetadata}
         authProfile={authProfile}
         wakewordConfig={wakewordConfig}
         wakewordState={wakewordState}
         onSelectTheme={(newTheme) => setTheme(newTheme)}
-        onToggleCamera={handleToggleCamera}
-        onToggleScreenWatch={handleToggleScreenWatch}
-        onOpenStudyMatrix={() => setIsStudyMatrixOpen(true)}
-        onOpenNotes={() => setIsNotesOpen(true)}
-        onOpenTasks={() => setIsTasksOpen(true)}
-        onOpenFiles={() => setIsFilesOpen(true)}
-        onOpenLanguages={() => setIsLanguageMatrixOpen(true)}
-        onOpenVoiceSettings={() => setIsVoiceSettingsOpen(true)}
-        onOpenMemories={() => setIsMemoriesOpen(true)}
-        onOpenAuth={() => setIsAuthModalOpen(true)}
         onOpenWakeword={() => setIsWakewordModalOpen(true)}
         onLockSession={() => {
           globalAuthManager.logout();
           SoundEffects.playAccessDenied();
         }}
-        onOpenEmotionalProcessor={() => setIsEmotionalDiagnosticsOpen(true)}
-        onOpenWorkbench={() => setIsWorkbenchOpen(true)}
-        onOpenProtocols={() => setIsProtocolsOpen(true)}
-        onOpenKnowledgeGraph={() => setIsKnowledgeGraphOpen(true)}
-        onOpenDebrief={() => setIsDebriefOpen(true)}
-        onOpenCalculator={() => {
-          setCalculatorInitialExpr('');
-          setIsCalculatorOpen(true);
-        }}
-        onOpenPrivateVault={() => {
-          setIsPrivateVaultUnlocked(globalPrivateVault.isUnlocked());
-          setIsPrivateVaultOpen(true);
-        }}
-        onOpenRoutinePreferences={() => setIsRoutinePrefsOpen(true)}
-        onOpenDesktopBridge={() => setIsDesktopBridgeOpen(true)}
-        onOpenImageGenerator={() => setIsImageGeneratorOpen(true)}
-        onOpenVoiceEnrollment={() => setIsVoiceEnrollmentOpen(true)}
-        isPrivateVaultUnlocked={isPrivateVaultUnlocked}
+        onOpenAuth={() => setIsAuthModalOpen(true)}
       />
 
       {/* Main Interactive Stage: reactor zone adaptive, neeche ka content alag scroll */}

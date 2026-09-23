@@ -6,8 +6,11 @@ export type WebhookEventType = 'checkout.order.completed' | 'checkout.order.fail
 export interface PaymentOrder {
   orderId: string; // internal unique id: frd_ord_<time><rand>
   userKey: string; // device:<id> — owner binding (existing auth model)
+  email: string; // lowercase account email when supplied (reinstall sync)
   planId: 'plus' | 'pro';
-  amount: number; // INR, from server plans (never frontend)
+  period: string; // monthly | 3_month | yearly (server-validated)
+  durationDays: number; // entitlement term for this purchase
+  amount: number; // INR, from server period table (never frontend)
   amountPaise: number;
   currency: 'INR';
   provider: string; // e.g. 'phonepe'
@@ -53,6 +56,10 @@ export interface ProviderOrderResult {
   checkoutUrl: string;
   checkoutExpiresAt: number;
   state: string;
+  /** UPI intent / QR / hosted page when the provider supplies them. */
+  upiIntent?: string;
+  qrCode?: string;
+  payUrl?: string;
 }
 
 export interface ProviderStatusResult {

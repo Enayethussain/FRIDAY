@@ -69,6 +69,9 @@ interface StoreShape {
   paymentOrdersByProvider: Record<string, string>; // provider:providerOrderId -> orderId (unique)
   webhookEvents: Record<string, import('./payments/types.js').WebhookEvent>; // eventKey -> event (unique)
   refunds: Record<string, import('./payments/types.js').RefundRecord>;
+  // Email-linked premium grants (reinstall-proof): email -> plan + expiry.
+  // Written ONLY on verified fulfillment/refund; read with expiry check.
+  emailGrants: Record<string, { plan: 'PRO' | 'PLUS'; expiryAt: number; updatedAt: number }>;
 }
 
 const STORE_VERSION = 2;
@@ -87,7 +90,7 @@ export class FridayStore {
   }
 
   private blank(): StoreShape {
-    return { version: STORE_VERSION, users: {}, usage: {}, settings: {}, paymentOrders: {}, paymentOrdersByProvider: {}, webhookEvents: {}, refunds: {} };
+    return { version: STORE_VERSION, users: {}, usage: {}, settings: {}, paymentOrders: {}, paymentOrdersByProvider: {}, webhookEvents: {}, refunds: {}, emailGrants: {} };
   }
 
   private load(): StoreShape {
@@ -107,6 +110,7 @@ export class FridayStore {
         paymentOrdersByProvider: obj(raw?.paymentOrdersByProvider) as StoreShape['paymentOrdersByProvider'] || base.paymentOrdersByProvider,
         webhookEvents: obj(raw?.webhookEvents) as StoreShape['webhookEvents'] || base.webhookEvents,
         refunds: obj(raw?.refunds) as StoreShape['refunds'] || base.refunds,
+        emailGrants: obj(raw?.emailGrants) as StoreShape['emailGrants'] || base.emailGrants,
       };
     } catch {
       // Corrupt file: back it up, never delete user data.
@@ -309,6 +313,34 @@ export class FridayStore {
 
   getRefund(refundId: string): import('./payments/types.js').RefundRecord | null {
     return this.data.refunds[refundId] || null;
+  }
+
+  private normEmail(email: string): string {
+    return String(email || '').trim().toLowerCase().slice(0, 128);
+  }
+
+  /** Email grant written ONLY on verified fulfillment (or cleared on refund). */
+  setEmailGrant(email: string, plan: 'PRO' | 'PLUS', expiryAt: number): void {
+    const key = this.normEmail(email);
+    if (!key || !key.includes('@')) return;
+    this.data.emailGrants[key] = { plan, expiryAt, updatedAt: Date.now() };
+    this.save();
+  }
+
+  clearEmailGrant(email: string): void {
+    const key = this.normEmail(email);
+    if (key && this.data.emailGrants[key]) {
+      delete this.data.emailGrants[key];
+      this.save();
+    }
+  }
+
+  /** Unexpired email grant or null. Never invents premium. */
+  getEmailGrant(email: string): { plan: 'PRO' | 'PLUS'; expiryAt: number } | null {
+    const g = this.data.emailGrants[this.normEmail(email)];
+    if (!g) return null;
+    if ((g.plan !== 'PRO' && g.plan !== 'PLUS') || !(g.expiryAt > Date.now())) return null;
+    return { plan: g.plan, expiryAt: g.expiryAt };
   }
 }
 

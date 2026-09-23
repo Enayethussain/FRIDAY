@@ -1,7 +1,7 @@
 // Central web pricing configuration — SINGLE SOURCE for the /upgrade page.
 // Placeholder prices until the payment system is connected. To change a
 // price later, edit ONLY this file (then wire it to the real checkout).
-// Real Play Billing catalog lives server-side (server/billing.ts) and is NOT
+// Real EKQR/UPI catalog lives server-side and is NOT
 // duplicated here. Never report a purchase as successful from this config.
 export type WebPlanId = 'free' | 'plus' | 'pro';
 

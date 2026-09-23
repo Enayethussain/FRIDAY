@@ -87,10 +87,10 @@ export async function createOrder(planId: 'plus' | 'pro'): Promise<CreatedOrder>
     25000
   );
   if (status === 501 || json?.code === 'PAYMENTS_NOT_CONFIGURED') {
-    throw new Error('Web payments are not active yet.');
+    throw new Error('Secure UPI payment via EKQR (GPay, PhonePe, Paytm) abhi active nahi hai. Dobara try karo ya support se sampark karo.');
   }
   if (!json?.success || !json?.checkoutUrl || !json?.orderId) {
-    throw new Error(String(json?.error || 'Payment order create nahi ho paya. Dobara try karo.'));
+    throw new Error(String(json?.error || 'Payment order create nahi ho paya. UPI app khula nahi to dobara Try karo.'));
   }
   return {
     orderId: String(json.orderId),
@@ -164,5 +164,97 @@ export function formatINR(amount: number): string {
     return new Intl.NumberFormat('en-IN', { style: 'currency', currency: 'INR', maximumFractionDigits: 0 }).format(amount);
   } catch {
     return `₹${amount}`;
+  }
+}
+
+export type BillingPeriod = 'monthly' | '3_month' | 'yearly';
+
+export interface PayPlanPrice {
+  planId: 'plus' | 'pro';
+  period: BillingPeriod;
+  amount: number;
+  days: number;
+}
+
+export interface PayPlansResult {
+  configured: boolean;
+  provider: string;
+  periods: { period: BillingPeriod; days: number }[];
+  prices: Record<'plus' | 'pro', Record<BillingPeriod, number>>;
+}
+
+/** Server period table (single source for checkout pricing). */
+export async function getPayPlans(): Promise<PayPlansResult | null> {
+  try {
+    const ctrl = new AbortController();
+    const t = setTimeout(() => ctrl.abort(), 10000);
+    const res = await fetch(apiUrl('/api/payment/plans'), { signal: ctrl.signal });
+    clearTimeout(t);
+    if (!res.ok) return null;
+    const j = await res.json().catch(() => null);
+    if (!j || !j.success || !j.prices) return null;
+    return {
+      configured: !!j.configured,
+      provider: String(j.provider || ''),
+      periods: Array.isArray(j.periods) ? j.periods : [],
+      prices: j.prices,
+    };
+  } catch {
+    return null;
+  }
+}
+
+export interface EkqrOrder {
+  orderId: string;
+  checkoutUrl: string;
+  upiIntent?: string;
+  qrCode?: string;
+  payUrl?: string;
+  amount: number;
+  currency: string;
+  planId: string;
+  period: string;
+  expiresAt: number;
+}
+
+/** Creates an EKQR order server-side. Amount comes from the server table. */
+export async function createEkqrOrder(planId: 'plus' | 'pro', period: BillingPeriod): Promise<EkqrOrder> {
+  const { status, json } = await postJson(
+    apiUrl('/api/payment/create-order'),
+    { planId, period, device_id: deviceId() },
+    25000
+  );
+  if (status === 501 || json?.code === 'PAYMENTS_NOT_CONFIGURED') {
+    throw new Error('Secure UPI payment via EKQR (GPay, PhonePe, Paytm) abhi active nahi hai. Dobara try karo ya support se sampark karo.');
+  }
+  if (!json?.success || !json?.orderId) {
+    throw new Error(String(json?.error || 'Payment order create nahi ho paya. UPI app khula nahi to dobara Try karo.'));
+  }
+  const checkoutUrl = String(json.checkoutUrl || json.pay_url || json.upi_intent || '');
+  if (!checkoutUrl) throw new Error('Payment link nahi mila. Dobara try karo.');
+  return {
+    orderId: String(json.orderId),
+    checkoutUrl,
+    upiIntent: json.upi_intent ? String(json.upi_intent) : undefined,
+    qrCode: json.qr_code ? String(json.qr_code) : undefined,
+    payUrl: json.pay_url ? String(json.pay_url) : undefined,
+    amount: Number(json.amount) || 0,
+    currency: String(json.currency || 'INR'),
+    planId: String(json.planId || planId),
+    period: String((json as any).period || period),
+    expiresAt: Number(json.expiresAt || 0) || 0,
+  };
+}
+
+/**
+ * Opens the EKQR payment URL the right way: upi:// deep-links must use
+ * location navigation (window.open drops custom schemes); https pay pages
+ * open in a new tab on desktop.
+ */
+export function openCheckoutUrl(url: string): void {
+  if (/^upi:\/\//i.test(url)) {
+    window.location.href = url;
+  } else {
+    window.open(url, '_blank', 'noopener');
   }
 }

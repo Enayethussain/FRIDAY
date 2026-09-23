@@ -50,3 +50,43 @@ export function publicPlans() {
     duration_days: x.durationDays,
   }));
 }
+
+export type BillingPeriod = 'monthly' | '3_month' | 'yearly';
+
+export const PERIOD_DAYS: Record<BillingPeriod, number> = {
+  monthly: 30,
+  '3_month': 90,
+  yearly: 365,
+};
+
+const DEFAULT_PERIOD_PRICES: Record<'plus' | 'pro', Record<BillingPeriod, number>> = {
+  pro: { monthly: 99, '3_month': 249, yearly: 799 },
+  plus: { monthly: 199, '3_month': 499, yearly: 1499 },
+};
+
+/**
+ * Per-period amounts (INR) — single source for checkout pricing.
+ * Env override EKQR_PERIOD_PRICES_JSON is validated entry-by-entry against
+ * positive finite numbers; invalid entries fall back to defaults.
+ */
+export function periodPrices(): Record<'plus' | 'pro', Record<BillingPeriod, number>> {
+  const out = JSON.parse(JSON.stringify(DEFAULT_PERIOD_PRICES)) as Record<'plus' | 'pro', Record<BillingPeriod, number>>;
+  try {
+    const raw = JSON.parse(process.env.EKQR_PERIOD_PRICES_JSON || '{}');
+    for (const plan of ['plus', 'pro'] as const) {
+      const row = (raw as any)?.[plan];
+      if (!row || typeof row !== 'object') continue;
+      for (const per of ['monthly', '3_month', 'yearly'] as const) {
+        const n = Number(row[per]);
+        if (Number.isFinite(n) && n > 0) out[plan][per] = Math.round(n);
+      }
+    }
+  } catch { /* env-only; defaults stand */ }
+  return out;
+}
+
+export function parsePeriod(v: unknown): BillingPeriod | null {
+  const t = String(v || '').toLowerCase();
+  if (t === 'monthly' || t === '3_month' || t === 'yearly') return t as BillingPeriod;
+  return null;
+}

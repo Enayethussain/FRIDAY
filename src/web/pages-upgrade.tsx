@@ -4,6 +4,15 @@ import { PLANS, PLAN_ORDER, type WebPlanId } from './plans';
 import { getEntitlements, refreshEntitlements } from '../services/EntitlementService';
 import { createOrder, getPaymentPlans, type PayPlan } from '../services/PaymentService';
 
+const SUPPORT_EMAIL = (import.meta as any).env?.VITE_CONTACT_EMAIL || '';
+const SUPPORT_URL = (import.meta as any).env?.VITE_SUPPORT_URL || '';
+function supportSuffix(): string {
+  if (SUPPORT_EMAIL && SUPPORT_URL) return ` Support: ${SUPPORT_EMAIL} / ${SUPPORT_URL}.`;
+  if (SUPPORT_EMAIL) return ` Support: ${SUPPORT_EMAIL}.`;
+  if (SUPPORT_URL) return ` Support: ${SUPPORT_URL}.`;
+  return ' Apna plan selection note karke support se sampark karo.';
+}
+
 type ServerPlan = 'FREE' | 'PRO' | 'PLUS';
 
 function toWebPlan(serverPlan: string): WebPlanId {
@@ -78,7 +87,7 @@ export function UpgradePage() {
   const onUpgradeClick = async (plan: WebPlanId) => {
     if (plan === current || plan === 'free') return;
     if (!payConfigured) {
-      setNotice('Payment setup is coming soon. Choose your payment method in the next step.');
+      setNotice(`Secure UPI payment via EKQR (GPay, PhonePe, Paytm) abhi active nahi hai. Dobara try karo.${supportSuffix()}`);
       return;
     }
     setNotice('');
@@ -89,7 +98,12 @@ export function UpgradePage() {
       // dynamic QR on desktop). Verification happens server-side on return.
       window.location.href = order.checkoutUrl;
     } catch (e: any) {
-      setNotice(e?.message || 'Payment order create nahi ho paya. Dobara try karo.');
+      const base = e?.message || 'Payment order create nahi ho paya.';
+      const help = `${base} UPI app khula nahi to dobara Try karo, ya GPay / PhonePe / Paytm se manual retry karo.${supportSuffix()}`;
+      setNotice(help);
+      try {
+        window.alert(help);
+      } catch { /* alert best-effort */ }
       setBusyPlan(null);
     }
   };

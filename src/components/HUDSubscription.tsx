@@ -1,10 +1,20 @@
 import React, { useEffect, useState } from 'react';
-import { XCircle, Check, RefreshCw } from 'lucide-react';
+import { XCircle, Check, Loader2 } from 'lucide-react';
 import { getEntitlements, refreshEntitlements, subscribeEntitlements, type EntitlementSnapshot } from '../services/EntitlementService';
-import { getProducts, purchaseProduct, restorePurchases, currentSubscriptionToken, describeOffer, lifecycleMessage, type ProductsResult, type ProductItem, type PlayOffer } from '../services/BillingService';
-import { getMyOrders, formatINR, type OrderHistoryItem } from '../services/PaymentService';
+import { lifecycleMessage } from '../services/BillingService';
+import { getPayPlans, createEkqrOrder, openCheckoutUrl, pollOrderStatus, getMyOrders, formatINR, type BillingPeriod, type OrderHistoryItem } from '../services/PaymentService';
 import type { ThemeAccent } from '../types';
 import { THEMES } from '../utils/theme';
+
+const SUPPORT_EMAIL = (import.meta as any).env?.VITE_CONTACT_EMAIL || '';
+const SUPPORT_URL = (import.meta as any).env?.VITE_SUPPORT_URL || '';
+/** Graceful fallback: instructions + support contact, never Google Play. */
+function supportSuffix(): string {
+  if (SUPPORT_EMAIL && SUPPORT_URL) return ` Support: ${SUPPORT_EMAIL} / ${SUPPORT_URL}.`;
+  if (SUPPORT_EMAIL) return ` Support: ${SUPPORT_EMAIL}.`;
+  if (SUPPORT_URL) return ` Support: ${SUPPORT_URL}.`;
+  return ' Apna Order ID note karke support se sampark karo.';
+}
 
 interface HUDSubscriptionProps {
   isOpen: boolean;
@@ -41,22 +51,35 @@ const PLUS_FEATURES = [
 export function HUDSubscription({ isOpen, onClose, theme }: HUDSubscriptionProps) {
   const currentTheme = THEMES[theme] || THEMES.amber;
   const [snap, setSnap] = useState<EntitlementSnapshot>(() => getEntitlements());
-  const [products, setProducts] = useState<ProductsResult | null>(null);
-  const [pricesState, setPricesState] = useState<'loading' | 'ready' | 'failed'>('loading');
+  /**
+   * Default fallback pricing, initialized directly in component state so plan
+   * buttons ALWAYS render with prices even if the backend never responds.
+   * Live backend values overwrite these when the fetch succeeds.
+   */
+  const [payPrices, setPayPrices] = useState<Record<'plus' | 'pro', Record<BillingPeriod, number>>>({
+    pro: { monthly: 99, '3_month': 249, yearly: 799 },
+    plus: { monthly: 199, '3_month': 499, yearly: 1499 },
+  });
+  const [pricesLoading, setPricesLoading] = useState(false);
   const [notice, setNotice] = useState('');
-  const [busy, setBusy] = useState(false);
+  const [busyKey, setBusyKey] = useState<string | null>(null);
   const [orders, setOrders] = useState<OrderHistoryItem[] | null>(null);
 
   const loadPrices = async () => {
-    setPricesState('loading');
+    setPricesLoading(true);
     try {
-      const p = await getProducts();
-      setProducts(p);
-      // Backend always returns 6 items when reachable; empty = failure, never
-      // silent. Prices shown only from this response (never hard-coded).
-      setPricesState(p.items.length > 0 ? 'ready' : 'failed');
+      const p = await getPayPlans();
+      const table = p?.prices;
+      const ok = table && ['plus', 'pro'].every((pl) =>
+        ['monthly', '3_month', 'yearly'].every((per) => Number((table as any)?.[pl]?.[per]) > 0)
+      );
+      // Backend reachable: live prices win. Unreachable/invalid: keep the
+      // defaults above — buttons stay enabled, no error banner for pricing.
+      if (ok && table) setPayPrices(table as Record<'plus' | 'pro', Record<BillingPeriod, number>>);
     } catch {
-      setPricesState('failed');
+      // Immediately stop loading; defaults already render. Never disable buys.
+    } finally {
+      setPricesLoading(false);
     }
   };
 
@@ -81,32 +104,47 @@ export function HUDSubscription({ isOpen, onClose, theme }: HUDSubscriptionProps
     ? new Date(snap.subscription.expiryAt).toLocaleDateString()
     : '';
 
-  const tryPurchase = async (item: ProductItem, offer?: PlayOffer) => {
-    if (!item?.productId) {
-      setNotice('Subscriptions are not available yet.');
-      return;
-    }
-    setBusy(true);
-    setNotice('Verifying your subscription...');
-    // Plan change (e.g. PRO monthly -> yearly): pass the current purchase
-    // token so Play manages replacement. Old access stays until verified.
-    let oldPurchaseToken: string | undefined;
-    try {
-      if ((snap.plan === 'PRO' || snap.plan === 'PLUS') && snap.state === 'confirmed') {
-        const cur = await currentSubscriptionToken();
-        if (cur && cur.productId !== item.productId) oldPurchaseToken = cur.purchaseToken;
-      }
-    } catch { /* plan-change best-effort */ }
-    const r = await purchaseProduct(item.productId, offer ? { offer, oldPurchaseToken } : oldPurchaseToken ? { oldPurchaseToken } : undefined);
-    setNotice(r.message);
-    setBusy(false);
-  };
-  const onRestore = async () => {
-    setBusy(true);
+  /** EKQR UPI purchase: order -> open UPI app/pay page -> poll verified status. */
+  const tryPurchase = async (plan: 'plus' | 'pro', period: BillingPeriod) => {
+    const key = `${plan}:${period}`;
+    if (busyKey) return;
+    setBusyKey(key);
     setNotice('');
-    const r = await restorePurchases();
-    setNotice(r.message);
-    setBusy(false);
+    try {
+      const order = await createEkqrOrder(plan, period);
+      setNotice(`Order ${order.orderId} bana — UPI app me payment complete karo. Verify hote hi plan activate hoga.`);
+      openCheckoutUrl(order.checkoutUrl);
+      const final = await pollOrderStatus(order.orderId, {
+        timeoutMs: 180000,
+        intervalMs: 3000,
+        onTick: (s) => {
+          if (s === 'pending' || s === 'created') {
+            setNotice('Payment verify ho rahi hai. Plan confirmation ke baad automatically activate hoga.');
+          }
+        },
+      });
+      if (final === 'success') {
+        await refreshEntitlements().catch(() => null);
+        setNotice(`Payment successful — FRIDAY ${plan === 'pro' ? 'Pro' : 'Plus'} active ho gaya.`);
+      } else if (final === 'failed') {
+        setNotice('Payment was not completed. Koi plan activate nahi hua — Try Again.');
+      } else if (final === 'cancelled') {
+        setNotice('Payment cancel ho gayi. Koi charge nahi hua.');
+      } else if (final === 'expired') {
+        setNotice('Order expire ho gaya. Dobara try karo.');
+      } else {
+        setNotice('Payment is being verified. Plan confirmation ke baad automatically activate hoga.');
+      }
+      void getMyOrders().then(setOrders).catch(() => {});
+    } catch (e: any) {
+      const base = e?.message || 'Payment order create nahi ho paya.';
+      setNotice(`${base} UPI app khula nahi to dobara Try karo, ya GPay / PhonePe / Paytm se manual retry karo.${supportSuffix()}`);
+      try {
+        window.alert(`${base}\n\nPayment link generate nahi ho paya. Dobara Try karo ya GPay / PhonePe / Paytm se retry karo.${supportSuffix()}`);
+      } catch { /* alert best-effort (WebView) */ }
+    } finally {
+      setBusyKey(null);
+    }
   };
 
   const card = (title: string, features: string[], footer: React.ReactNode, highlight: boolean, current: boolean) => (
@@ -134,66 +172,29 @@ export function HUDSubscription({ isOpen, onClose, theme }: HUDSubscriptionProps
     </div>
   );
 
-  const buyBtn = (plan: 'PRO' | 'PLUS', period: string, label: string) => {
-    if (pricesState === 'loading') {
-      return (
-        <div className="w-full min-h-[44px] rounded-xl bg-slate-800/70 border border-slate-800 flex items-center justify-center text-xs font-mono text-slate-500 animate-pulse">
-          Loading prices…
-        </div>
-      );
-    }
-    const item = products?.items.find((i) => i.plan === plan && i.period === period);
-    if (!item) {
-      return (
-        <button
-          type="button"
-          onClick={() => void loadPrices()}
-          className="w-full min-h-[44px] rounded-xl border border-amber-500/50 text-amber-300 font-bold text-sm"
-        >
-          Prices unavailable — Retry
-        </button>
-      );
-    }
-    const price = item.playPrice || item.price || '';
+  const periodLabel: Record<BillingPeriod, string> = { monthly: 'month', '3_month': '3 months', yearly: 'year' };
+
+  const buyBtn = (plan: 'plus' | 'pro', period: BillingPeriod, label: string) => {
+    const key = `${plan}:${period}`;
+    // payPrices always holds defaults, so buttons render with prices even
+    // when the backend never responds. Buttons are never disabled by this.
+    const price = Number(payPrices?.[plan]?.[period]) || 0;
+    const busy = busyKey === key;
+    let inr = `₹${price}`;
+    try {
+      inr = new Intl.NumberFormat('en-IN', { style: 'currency', currency: 'INR', maximumFractionDigits: 0 }).format(price);
+    } catch { /* fallback above */ }
     return (
       <button
         type="button"
-        disabled={busy}
-        onClick={() => void tryPurchase(item)}
-        className="w-full min-h-[44px] rounded-xl font-bold text-sm transition disabled:opacity-50"
-        style={{ backgroundColor: currentTheme.primary, color: '#020617' }}
+        disabled={busy || busyKey !== null}
+        onClick={() => void tryPurchase(plan, period)}
+        aria-label={`${label}, ${inr} per ${periodLabel[period]}`}
+        className="w-full min-h-[44px] rounded-xl bg-amber-500 hover:bg-amber-400 font-bold text-sm text-slate-950 transition disabled:opacity-50 flex items-center justify-center gap-2"
       >
-        {label}{price ? ` — ${price}` : ''}{item.badge ? ` · ${item.badge}` : ''}
+        {busy && <Loader2 className="w-4 h-4 animate-spin" />}
+        {busy ? 'Creating secure order…' : `${label} — ${inr}/${periodLabel[period]}`}
       </button>
-    );
-  };
-
-  /** Offer rows: only offers Play actually returned, described factually. */
-  const offerRows = (plan: 'PRO' | 'PLUS', period: string) => {
-    const item = products?.items.find((i) => i.plan === plan && i.period === period);
-    const offers = item?.playOffers || [];
-    if (offers.length < 2) return null; // default row already covers the base offer
-    return (
-      <div className="space-y-1.5">
-        {offers.slice(1).map((o) => {
-          const lines = describeOffer(o, item.playPrice || item.price);
-          if (!lines) return null;
-          return (
-            <button
-              key={o.offerToken || o.offerId}
-              type="button"
-              disabled={busy || !o.offerToken}
-              onClick={() => void tryPurchase(item, o)}
-              className="w-full text-left rounded-xl border border-slate-700 bg-slate-900/60 px-3 py-2 transition disabled:opacity-50"
-            >
-              {lines.map((l) => (
-                <div key={l} className="text-xs text-emerald-300 font-semibold">{l}</div>
-              ))}
-              <div className="text-[10px] text-slate-500 mt-0.5">Tap to buy with this offer</div>
-            </button>
-          );
-        })}
-      </div>
     );
   };
 
@@ -237,14 +238,6 @@ export function HUDSubscription({ isOpen, onClose, theme }: HUDSubscriptionProps
         <p className="text-[11px] text-slate-500 mb-4">
           Devices: {snap.devicesUsed}{snap.maxDevices ? ` / ${snap.maxDevices}` : ''} · Entitlements verified server-side.
         </p>
-        {pricesState === 'failed' && (
-          <div className="mb-4 text-xs text-amber-300 bg-amber-500/10 border border-amber-500/30 rounded-xl px-3 py-2 flex items-center justify-between gap-2">
-            <span>Prices load nahi ho paye (backend unreachable).</span>
-            <button type="button" onClick={() => void loadPrices()} className="shrink-0 px-3 py-1.5 min-h-[44px] rounded-lg border border-amber-500/50 font-bold">
-              Retry
-            </button>
-          </div>
-        )}
         {statusLine && (
           <p className="mb-4 text-xs text-sky-300 bg-sky-500/10 border border-sky-500/30 rounded-xl px-3 py-2">{statusLine}</p>
         )}
@@ -255,27 +248,21 @@ export function HUDSubscription({ isOpen, onClose, theme }: HUDSubscriptionProps
           ), false, snap.plan === 'FREE')}
           {card('PRO', PRO_FEATURES, (
             <div className="space-y-2">
-              {buyBtn('PRO', 'MONTHLY', 'Go Pro Monthly')}
-              {offerRows('PRO', 'MONTHLY')}
+              {buyBtn('pro', 'monthly', 'Go Pro Monthly')}
               <div className="grid grid-cols-2 gap-2">
-                {buyBtn('PRO', '3_MONTH', '3-Month')}
-                {buyBtn('PRO', 'YEARLY', 'Yearly')}
+                {buyBtn('pro', '3_month', '3-Month')}
+                {buyBtn('pro', 'yearly', 'Yearly')}
               </div>
-              {offerRows('PRO', '3_MONTH')}
-              {offerRows('PRO', 'YEARLY')}
-              <p className="text-[11px] text-slate-500">Ad-free FRIDAY. Google Play price is final at checkout.</p>
+              <p className="text-[11px] text-slate-500">Ad-free FRIDAY. Pay securely with UPI — plan activates after verification.</p>
             </div>
           ), true, snap.plan === 'PRO')}
           {card('PLUS', PLUS_FEATURES, (
             <div className="space-y-2">
-              {buyBtn('PLUS', 'MONTHLY', 'Go Plus Monthly')}
-              {offerRows('PLUS', 'MONTHLY')}
+              {buyBtn('plus', 'monthly', 'Go Plus Monthly')}
               <div className="grid grid-cols-2 gap-2">
-                {buyBtn('PLUS', '3_MONTH', '3-Month')}
-                {buyBtn('PLUS', 'YEARLY', 'Yearly')}
+                {buyBtn('plus', '3_month', '3-Month')}
+                {buyBtn('plus', 'yearly', 'Yearly')}
               </div>
-              {offerRows('PLUS', '3_MONTH')}
-              {offerRows('PLUS', 'YEARLY')}
             </div>
           ), false, snap.plan === 'PLUS')}
         </div>
@@ -283,14 +270,6 @@ export function HUDSubscription({ isOpen, onClose, theme }: HUDSubscriptionProps
         {notice && (
           <p className="mt-3 text-xs text-amber-300 bg-amber-500/10 border border-amber-500/30 rounded-xl px-3 py-2">{notice}</p>
         )}
-        <button
-          type="button"
-          disabled={busy}
-          onClick={onRestore}
-          className="mt-3 w-full min-h-[44px] rounded-xl bg-slate-800 border border-slate-700 text-slate-200 font-semibold text-sm flex items-center justify-center gap-2 disabled:opacity-50"
-        >
-          <RefreshCw className="w-4 h-4" /> Restore Purchases
-        </button>
         <div className="mt-3 rounded-2xl border border-slate-800 bg-slate-900/50 p-4">
           <h3 className="font-bold text-sm text-slate-100 mb-2">Order History</h3>
           {orders === null ? (
@@ -311,7 +290,7 @@ export function HUDSubscription({ isOpen, onClose, theme }: HUDSubscriptionProps
           )}
         </div>
         <p className="mt-2 text-[10px] text-slate-500 text-center">
-          {products && !products.paymentsConfigured ? 'Payments not configured yet — purchases unavailable.' : 'Purchases verified server-side when billing lands.'}
+          Secure UPI checkout — plan activates only after verified payment.
         </p>
       </div>
     </div>

@@ -8,5 +8,28 @@ services:
     envVars:
       - key: NODE_ENV
         value: production
+      # Public frontend origin (Vercel URL) — must match the deployed
+      # frontend exactly, otherwise browsers block /api/* (CORS).
+      - key: APP_URL
+        sync: false
+      # Canonical public backend URL (CORS + status output).
+      - key: BACKEND_URL
+        sync: false
       - key: GEMINI_API_KEY
         sync: false
+      # EKQR UPI payments (Telegram distribution). Unset = checkout
+      # honestly reports "not active", nothing granted.
+      - key: EKQR_BASE_URL
+        sync: false
+      - key: EKQR_API_KEY
+        sync: false
+      - key: EKQR_WEBHOOK_SECRET
+        sync: false
+      - key: EKQR_AMOUNT_UNIT
+        value: paise
+      - key: PAYMENT_PROVIDER
+        value: ekqr
+      - key: PRO_PRICE_INR
+        value: 99
+      - key: PLUS_PRICE_INR
+        value: 199

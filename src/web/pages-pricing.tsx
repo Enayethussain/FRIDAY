@@ -1,7 +1,17 @@
 import { useEffect, useState } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { PageShell } from './layout';
 import { apiUrl } from '../lib/serverUrl';
+import { createEkqrOrder, openCheckoutUrl } from '../services/PaymentService';
+
+const SUPPORT_EMAIL = (import.meta as any).env?.VITE_CONTACT_EMAIL || '';
+const SUPPORT_URL = (import.meta as any).env?.VITE_SUPPORT_URL || '';
+function supportSuffix(): string {
+  if (SUPPORT_EMAIL && SUPPORT_URL) return ` Support: ${SUPPORT_EMAIL} / ${SUPPORT_URL}.`;
+  if (SUPPORT_EMAIL) return ` Support: ${SUPPORT_EMAIL}.`;
+  if (SUPPORT_URL) return ` Support: ${SUPPORT_URL}.`;
+  return ' Apna selection note karke support se sampark karo.';
+}
 
 interface CatalogItem {
   key: string;
@@ -14,6 +24,17 @@ interface CatalogItem {
   badge: string;
   configured: boolean;
 }
+
+/**
+ * Fallback standard pricing shown ONLY when the backend catalog is
+ * unreachable. Same values as the server period table; the live backend
+ * response always wins when available. EKQR UPI checkout
+ * (GPay, PhonePe, Paytm) is the only checkout — no Play dependency.
+ */
+const FALLBACK_PRICES: Record<'PRO' | 'PLUS', Record<string, string>> = {
+  PRO: { MONTHLY: '₹99/month', '3_MONTH': '₹249/3 months', YEARLY: '₹799/year' },
+  PLUS: { MONTHLY: '₹199/month', '3_MONTH': '₹499/3 months', YEARLY: '₹1,499/year' },
+};
 
 const FREE_POINTS = [
   'Basic FRIDAY chat (Hindi / English / Hinglish)',
@@ -40,13 +61,15 @@ const PLUS_POINTS = [
 ];
 
 export function PricingPage() {
+  const nav = useNavigate();
   const [items, setItems] = useState<CatalogItem[] | null>(null);
-  const [failed, setFailed] = useState(false);
+  const [backendLive, setBackendLive] = useState(false);
   const [loading, setLoading] = useState(true);
+  const [notice, setNotice] = useState('');
+  const [busyKey, setBusyKey] = useState<string | null>(null);
 
   const load = async () => {
     setLoading(true);
-    setFailed(false);
     try {
       const ctrl = new AbortController();
       const t = setTimeout(() => ctrl.abort(), 10000);
@@ -54,10 +77,16 @@ export function PricingPage() {
       clearTimeout(t);
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
       const j = await res.json().catch(() => null);
-      if (Array.isArray(j?.items) && j.items.length > 0) setItems(j.items);
-      else setFailed(true);
+      if (Array.isArray(j?.items) && j.items.length > 0) {
+        setItems(j.items);
+        setBackendLive(true);
+      } else {
+        // Empty/unexpected payload: fall back to standard prices, no banner.
+        setBackendLive(false);
+      }
     } catch {
-      setFailed(true);
+      // Backend unreachable: graceful fallback below, no error banner.
+      setBackendLive(false);
     } finally {
       setLoading(false);
     }
@@ -69,8 +98,33 @@ export function PricingPage() {
   }, []);
 
   const priceFor = (plan: 'PRO' | 'PLUS', period: string): string => {
+    // Live backend price wins; otherwise the standard fallback above.
     const it = items?.find((i) => i.plan === plan && i.period === period);
-    return it?.price || '';
+    if (it?.price) return it.price;
+    return FALLBACK_PRICES[plan][period] || '';
+  };
+
+  const onPay = async (plan: 'plus' | 'pro', period: 'monthly' | '3_month' | 'yearly') => {
+    const key = `${plan}:${period}`;
+    if (busyKey) return;
+    setBusyKey(key);
+    setNotice('');
+    try {
+      // No Play dependency: server EKQR order -> UPI intent / pay page.
+      // UPI deep-links auto-open the user's UPI app (GPay/PhonePe/Paytm).
+      const order = await createEkqrOrder(plan, period);
+      openCheckoutUrl(order.checkoutUrl);
+      nav(`/payment/success?orderId=${encodeURIComponent(order.orderId)}`);
+    } catch (e: any) {
+      const base = e?.message || 'Payment start nahi ho paya.';
+      const help = `${base} UPI app khula nahi to dobara Try karo, ya GPay / PhonePe / Paytm se manual retry karo.${supportSuffix()}`;
+      setNotice(help);
+      try {
+        window.alert(help);
+      } catch { /* alert best-effort */ }
+    } finally {
+      setBusyKey(null);
+    }
   };
 
   const periodBlock = (plan: 'PRO' | 'PLUS') => (
@@ -78,14 +132,27 @@ export function PricingPage() {
       {(['MONTHLY', '3_MONTH', 'YEARLY'] as const).map((p) => {
         const label = p === 'MONTHLY' ? 'Monthly' : p === '3_MONTH' ? '3 Months' : 'Yearly';
         const price = priceFor(plan, p);
+        const key = `${plan.toLowerCase()}:${p.toLowerCase()}`;
+        const busy = busyKey === key;
         return (
-          <div key={p} className="flex items-center justify-between rounded-xl border border-slate-800 bg-black/40 px-3 py-2.5">
-            <span className="text-sm text-slate-300">{label}</span>
-            <span className="font-mono font-bold text-amber-300">{price || '…'}</span>
+          <div key={p} className="flex items-center justify-between gap-2 rounded-xl border border-slate-800 bg-black/40 px-3 py-2">
+            <div className="min-w-0">
+              <div className="text-sm text-slate-300">{label}</div>
+              <div className="font-mono font-bold text-amber-300">{loading && !price ? '…' : price}</div>
+            </div>
+            <button
+              type="button"
+              disabled={busy || busyKey !== null}
+              onClick={() => void onPay(plan.toLowerCase() as 'plus' | 'pro', p.toLowerCase() as 'monthly' | '3_month' | 'yearly')}
+              aria-label={`Pay for ${plan} ${label} at ${price}`}
+              className="shrink-0 px-4 py-2 min-h-[44px] rounded-xl bg-amber-500 hover:bg-amber-400 font-bold text-sm text-slate-950 transition disabled:opacity-50"
+            >
+              {busy ? 'Starting…' : 'Pay'}
+            </button>
           </div>
         );
       })}
-      <p className="text-[11px] text-slate-500">Google Play price is final at checkout. Purchases verify server-side.</p>
+      <p className="text-[11px] text-slate-500">Secure UPI payment via EKQR (GPay, PhonePe, Paytm) — plan activates after verification.</p>
     </div>
   );
 
@@ -93,18 +160,15 @@ export function PricingPage() {
     <PageShell title="Pricing" description="FRIDAY AI pricing: Free ₹0, Pro from ₹99/month, Plus from ₹199/month. Verified entitlements, no fake discounts.">
       <h1 className="font-display font-black text-3xl">Pricing</h1>
       <p className="mt-2 text-slate-400">Live catalog from the FRIDAY backend — no invented discounts or trials.</p>
-      {loading && !failed && (
-        <p className="mt-4 text-sm text-slate-400 bg-slate-900/60 border border-slate-800 rounded-xl px-4 py-3 animate-pulse">
-          Loading live prices from FRIDAY backend…
+      {!loading && !backendLive && (
+        <p className="mt-4 text-xs text-slate-400 bg-slate-900/60 border border-slate-800 rounded-xl px-4 py-3">
+          Backend unreachable — showing standard prices. Checkout needs connection; your plan activates only after verified payment.
         </p>
       )}
-      {failed && (
-        <div className="mt-4 text-sm text-amber-300 bg-amber-500/10 border border-amber-500/30 rounded-xl px-4 py-3 flex flex-wrap items-center justify-between gap-2">
-          <span>Pricing is temporarily unavailable (backend unreachable). Please try again later.</span>
-          <button type="button" onClick={() => void load()} className="px-4 py-2 min-h-[44px] rounded-xl border border-amber-500/50 font-bold">
-            Retry
-          </button>
-        </div>
+      {notice && (
+        <p role="status" className="mt-4 text-sm text-amber-300 bg-amber-500/10 border border-amber-500/30 rounded-xl px-4 py-3">
+          {notice}
+        </p>
       )}
       <div className="grid gap-4 md:grid-cols-3 mt-6">
         <div className="rounded-2xl border border-slate-800 bg-slate-900/50 p-5 flex flex-col">
@@ -134,7 +198,7 @@ export function PricingPage() {
           <Link to="/login" className="mt-4 block text-center px-4 py-2.5 rounded-xl border border-violet-500/60 text-violet-300 font-bold text-sm min-h-[44px]">Login to upgrade</Link>
         </div>
       </div>
-      <p className="mt-4 text-xs text-slate-500">Headline prices show intended INR values until the backend catalog loads; Play Console may localize checkout prices.</p>
+      <p className="mt-4 text-xs text-slate-500">Prices shown are standard INR values until the backend catalog loads; Secure UPI payment via EKQR (GPay, PhonePe, Paytm).</p>
     </PageShell>
   );
 }

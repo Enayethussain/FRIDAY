@@ -27,7 +27,11 @@ import { createCloudBuilderRouter } from './cloudbuilder/routes.js';
 
 const PORT = Number(process.env.PORT) || 3000;
 const app = express();
-app.use(express.json());
+app.use(express.json({
+  // Preserve the exact raw bytes for HMAC webhook verification
+  // (route-level raw parsers are skipped once JSON parsing consumed the body).
+  verify: (req: any, _res, buf: Buffer) => { req.rawBody = buf.toString('utf8'); },
+}));
 
 // Tight CORS for the FRIDAY clients that call /api/* cross-origin:
 //  - Android APK WebView (origin "capacitor://localhost")
@@ -2173,8 +2177,8 @@ import { FridayStore } from './server/store.js';
 import { createV1Router } from './server/v1.js';
 import { createCashfreeRouter } from './server/cashfree.js';
 import { effectivePlan, productById } from './server/billing.js';
-import { createPaymentRouter } from './server/payments/router.js';
-import { selectProvider } from './server/payments/providers/phonepe.js';
+import { createPaymentRouter, createWebhookHandler } from './server/payments/router.js';
+import { selectProvider } from './server/payments/providers/index.js';
 const fridayConfig = loadConfig();
 const aiRouter = new AIRouter(fridayConfig);
 const fridayStore = new FridayStore(fridayConfig.storePath);
@@ -2224,6 +2228,18 @@ app.use('/api/payment', createPaymentRouter({
   log: (...a: any[]) => console.log(...a),
   logError: (...a: any[]) => console.error(...a),
 }));
+
+// Webhook aliases (same shared handler, same verification — EKQR posts here).
+// Configure ONE of these URLs in the EKQR merchant console as the webhook.
+for (const p of ['/api/payment-webhook', '/api/ekqr-webhook']) {
+  app.post(p, express.raw({ type: '*/*', limit: '64kb' }), createWebhookHandler({
+    store: fridayStore,
+    provider: selectProvider(),
+    redact: redactSecrets,
+    log: (...a: any[]) => console.log(...a),
+    logError: (...a: any[]) => console.error(...a),
+  }));
+}
 
 // Top-level liveness probe (safe info only — never secrets).
 app.get('/health', (_req, res) => {
