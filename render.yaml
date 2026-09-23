@@ -26,7 +26,7 @@ services:
       - key: EKQR_WEBHOOK_SECRET
         sync: false
       - key: EKQR_AMOUNT_UNIT
-        value: paise
+        value: inr
       - key: PAYMENT_PROVIDER
         value: ekqr
       - key: PRO_PRICE_INR

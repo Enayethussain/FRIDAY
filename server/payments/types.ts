@@ -83,6 +83,7 @@ export interface PaymentProvider {
   isConfigured(): boolean;
   createOrder(args: {
     internalOrderId: string; amountPaise: number; redirectUrl: string; expireAfterSec: number;
+    planLabel?: string;
   }): Promise<ProviderOrderResult>;
   getPaymentStatus(internalOrderId: string): Promise<ProviderStatusResult>;
   /** Returns verified event or null when signature/auth fails. */

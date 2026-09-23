@@ -1,18 +1,16 @@
-// EkQR-compatible UPI provider (dynamic QR + UPI intent + HMAC webhooks).
+// EkQR-compatible UPI provider (portal.ekqr.in API Documentation).
 //
-// Integration basis (verified 2026): EkQR-compatible gateways expose
-// "drop-in create_order and check_order_status" with "HMAC callbacks", Bearer
-// API keys, per-order dynamic QR / UPI intent links and a hosted pay page.
-// The full field reference lives inside each merchant's EKQR console, so
-// every integration point here is explicit and configurable:
-//
-//   EKQR_BASE_URL               e.g. https://api.ekqr.example (REQUIRED)
-//   EKQR_API_KEY                Bearer key from merchant console (REQUIRED)
+//   EKQR_BASE_URL               e.g. https://api.ekqr.in (REQUIRED)
+//   EKQR_API_KEY                sent as `key` in every JSON body (REQUIRED)
 //   EKQR_WEBHOOK_SECRET         HMAC-SHA256 hex secret (REQUIRED for webhooks)
 //   EKQR_WEBHOOK_SIGNATURE_HEADER  default: x-ekqr-signature
-//   EKQR_AMOUNT_UNIT            paise | inr (default: paise)
-//   EKQR_CREATE_PATH            default: /api/create_order (portal.ekqr.in)
-//   EKQR_STATUS_PATH            default: /check_order_status
+//   EKQR_AMOUNT_UNIT            inr (default, per docs "100" = Rs 100) | paise
+//   EKQR_CREATE_PATH            default: /api/create_order
+//   EKQR_STATUS_PATH            default: /api/check_order_status
+//
+// Docs: POST {key, client_txn_id, amount, p_info, customer_*, redirect_url}
+// -> {status:true, msg, data:{order_id, payment_url, upi_intent, bhim_link}}.
+// Amount is RUPEES (string) per docs example.
 //
 // Field names accepted from EKQR are tolerant on READ (documented variants)
 // but strict on VERIFY (order id echo + amount match + success state).
@@ -28,7 +26,13 @@ function base(): string {
 }
 
 function amountUnit(): 'paise' | 'inr' {
-  return env('EKQR_AMOUNT_UNIT', 'paise').toLowerCase() === 'inr' ? 'inr' : 'paise';
+  return env('EKQR_AMOUNT_UNIT', 'inr').toLowerCase() === 'paise' ? 'paise' : 'inr';
+}
+
+/** Docs amount is RUPEES (string "100"). paise mode kept for override only. */
+function docsAmount(amountPaise: number): string | number {
+  if (amountUnit() === 'inr') return String(Math.round(amountPaise / 100));
+  return Math.round(amountPaise);
 }
 
 /** Convert INR rupees to the provider's amount unit. */
@@ -73,6 +77,25 @@ function normStatus(s: unknown): 'PENDING' | 'COMPLETED' | 'FAILED' | 'EXPIRED' 
   return 'UNKNOWN';
 }
 
+/**
+ * Docs show upi_intent as an OBJECT (per-app deep links) and bhim_link as a
+ * plain upi:// string. Accept a string directly; otherwise scan the object
+ * for the first upi:// (or http) string value.
+ */
+function firstIntentString(body: any): string {
+  const direct = pick<string>(body, ['upi_intent', 'upiIntent', 'upi_link', 'intent_url', 'bhim_link', 'bhimLink']);
+  if (typeof direct === 'string' && direct) return direct;
+  const containers = [direct, pick<unknown>(body, ['upi_intent', 'upiIntent'])];
+  for (const c of containers) {
+    if (c && typeof c === 'object') {
+      for (const v of Object.values(c as Record<string, unknown>)) {
+        if (typeof v === 'string' && /^(upi:\/\/|https?:\/\/)/i.test(v)) return v;
+      }
+    }
+  }
+  return '';
+}
+
 export class EkqrProvider implements PaymentProvider {
   name = 'ekqr';
 
@@ -84,40 +107,47 @@ export class EkqrProvider implements PaymentProvider {
     return { 'Content-Type': 'application/json', Authorization: `Bearer ${env('EKQR_API_KEY')}` };
   }
 
-  async createOrder(args: { internalOrderId: string; amountPaise: number; redirectUrl: string; expireAfterSec: number }): Promise<ProviderOrderResult> {
+  async createOrder(args: { internalOrderId: string; amountPaise: number; redirectUrl: string; expireAfterSec: number; planLabel?: string }): Promise<ProviderOrderResult> {
     if (!this.isConfigured()) throw new Error('EKQR not configured (EKQR_BASE_URL / EKQR_API_KEY missing)');
-    const amount = amountUnit() === 'inr' ? Math.round(args.amountPaise / 100) : args.amountPaise;
     const url = `${base()}${env('EKQR_CREATE_PATH', '/api/create_order')}`;
+    // Per portal.ekqr.in docs: auth `key` lives IN the JSON body.
+    // (Bearer header kept harmlessly; the gateway reads `key`.)
     const { status, json } = await httpJson(url, {
       method: 'POST',
       headers: this.authHeaders(),
       body: JSON.stringify({
-        order_id: args.internalOrderId,
-        amount,
-        currency: 'INR',
+        key: env('EKQR_API_KEY'),
+        client_txn_id: args.internalOrderId,
+        amount: docsAmount(args.amountPaise),
+        p_info: (args.planLabel || 'FRIDAY plan').slice(0, 60),
         redirect_url: args.redirectUrl,
-        webhook_url: process.env.WEBHOOK_URL || undefined,
-        expire_after: args.expireAfterSec,
       }),
     });
     if ((status !== 200 && status !== 201) || !json) {
-      // URL has no secret (auth is a Bearer header) — safe to log so the
+      // URL has no secret (key is in body, not URL) — safe to log so the
       // merchant can compare it with the EKQR console API docs on 4xx.
       try { console.error(`[EKQR] create order failed: POST ${url} -> HTTP ${status}`); } catch { /* log-only */ }
       throw new Error(`EKQR create order HTTP ${status}`.slice(0, 200));
     }
-    // Echo must match our order id (binds response to request).
-    const echoId = String(pick<string>(body, ['order_id', 'orderId', 'merchant_order_id']) || '');
-    if (echoId && echoId !== args.internalOrderId) {
-      throw new Error('EKQR order id mismatch');
-    }
-    // Some gateways nest the payload under `data` — unwrap one level.
+    // Docs envelope: {status:true, msg, data:{...}}. Unwrap one level.
     const body = (json && typeof json === 'object' && (json as any).data && typeof (json as any).data === 'object')
       ? (json as any).data as Record<string, unknown>
       : json;
-    const upiIntent = String(pick<string>(body, ['upi_intent', 'upiIntent', 'upi_link', 'intent_url']) || '');
+    // Gateway-level refusal (HTTP 200 + status:false) — surface its message.
+    const okFlag = (json as any)?.status;
+    if (okFlag === false) {
+      const gwMsg = String((json as any)?.msg || (json as any)?.message || 'order rejected').slice(0, 160);
+      throw new Error(`EKQR order rejected: ${gwMsg}`.slice(0, 200));
+    }
+    // Echo: docs return EkQR's numeric order_id AND our client_txn_id.
+    // Only the client_txn_id echo binds the response to our request.
+    const echoTxn = String(pick<string>(body, ['client_txn_id', 'clientTxnId']) || pick<string>(json, ['client_txn_id']) || '');
+    if (echoTxn && echoTxn !== args.internalOrderId) {
+      throw new Error('EKQR order id mismatch');
+    }
+    const upiIntent = firstIntentString(body);
     const qrCode = String(pick<string>(body, ['qr_code', 'qrCode', 'qr', 'qr_string', 'qrString', 'qr_image', 'qrImage']) || '');
-    const payUrl = String(pick<string>(body, ['pay_url', 'payUrl', 'payment_url', 'checkout_url', 'hosted_url', 'payment_link', 'short_url']) || '');
+    const payUrl = String(pick<string>(body, ['payment_url', 'pay_url', 'payUrl', 'checkout_url', 'hosted_url', 'payment_link', 'short_url']) || '');
     if (!upiIntent && !qrCode && !payUrl) {
       // Log top-level keys only (no values/secrets) so the merchant can map
       // the real field names from Render logs.
@@ -134,8 +164,10 @@ export class EkqrProvider implements PaymentProvider {
         `EKQR response has no upi_intent / qr_code / pay_url${keys ? ` | keys:[${keys.slice(0, 120)}]` : ''}${gwMsg ? ` | ekqr:${gwMsg}` : ''}`.slice(0, 300)
       );
     }
+    // Docs: data.order_id is EkQR's numeric id; client_txn_id echo is ours.
+    const providerOrderId = String(pick<string>(body, ['order_id', 'orderId']) || '') || echoTxn || args.internalOrderId;
     return {
-      providerOrderId: echoId || args.internalOrderId,
+      providerOrderId,
       checkoutUrl: payUrl || upiIntent,
       checkoutExpiresAt: Number(pick<number>(body, ['expires_at', 'expireAt', 'expiresAt']) || 0) || 0,
       state: String(pick<string>(body, ['status', 'state']) || 'PENDING'),
@@ -149,17 +181,31 @@ export class EkqrProvider implements PaymentProvider {
     if (!this.isConfigured()) {
       return { state: 'UNKNOWN', amountPaise: 0, providerPaymentId: '', paymentMode: 'UPI', rawCode: 'NOT_CONFIGURED' };
     }
-    const url = `${base()}${env('EKQR_STATUS_PATH', '/check_order_status')}?order_id=${encodeURIComponent(internalOrderId)}`;
-    const { status, json } = await httpJson(url, { method: 'GET', headers: this.authHeaders() });
+    // Per portal.ekqr.in docs: POST {key, client_txn_id, txn_date DD-MM-YYYY}.
+    const now = new Date();
+    const pad = (n: number) => String(n).padStart(2, '0');
+    const txnDate = `${pad(now.getDate())}-${pad(now.getMonth() + 1)}-${now.getFullYear()}`;
+    const url = `${base()}${env('EKQR_STATUS_PATH', '/api/check_order_status')}`;
+    const { status, json } = await httpJson(url, {
+      method: 'POST',
+      headers: this.authHeaders(),
+      body: JSON.stringify({ key: env('EKQR_API_KEY'), client_txn_id: internalOrderId, txn_date: txnDate }),
+    });
     if (status === 404) {
       return { state: 'UNKNOWN', amountPaise: 0, providerPaymentId: '', paymentMode: 'UPI', rawCode: 'NOT_FOUND' };
     }
     if (status !== 200 || !json) {
       return { state: 'UNKNOWN', amountPaise: 0, providerPaymentId: '', paymentMode: 'UPI', rawCode: `HTTP_${status}` };
     }
-    const state = normStatus(pick<string>(json, ['status', 'state', 'payment_status']));
-    const amountPaise = toPaise(Number(pick<number>(json, ['amount', 'amount_paise', 'amountPaise']) ?? 0));
-    const utr = String(pick<string>(json, ['utr', 'utr_number', 'transaction_id', 'txn_id', 'upi_txn_id']) || '');
+    const body = (json && typeof json === 'object' && (json as any).data && typeof (json as any).data === 'object')
+      ? (json as any).data as Record<string, unknown>
+      : json;
+    const state = normStatus(
+      pick<string>(body, ['status', 'state', 'payment_status', 'txn_status', 'order_status'])
+      ?? ((json as any)?.status === true ? 'PENDING' : undefined)
+    );
+    const amountPaise = toPaise(Number(pick<number>(body, ['amount', 'amount_paise', 'amountPaise']) ?? 0));
+    const utr = String(pick<string>(body, ['utr', 'utr_number', 'transaction_id', 'txn_id', 'upi_txn_id', 'rrn', 'upi_ref']) || '');
     if (state === 'COMPLETED') {
       return { state: 'COMPLETED', amountPaise, providerPaymentId: utr, paymentMode: 'UPI', rawCode: 'COMPLETED' };
     }

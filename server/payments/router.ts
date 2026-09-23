@@ -333,6 +333,7 @@ export function createPaymentRouter(deps: {
           amountPaise: order.amountPaise,
           redirectUrl,
           expireAfterSec: 1200,
+          planLabel: `FRIDAY ${planId === 'pro' ? 'Pro' : 'Plus'} ${period}`,
         });
         order.providerOrderId = created.providerOrderId;
         order.checkoutUrl = created.checkoutUrl;
