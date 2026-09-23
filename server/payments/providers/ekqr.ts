@@ -101,6 +101,9 @@ export class EkqrProvider implements PaymentProvider {
       }),
     });
     if ((status !== 200 && status !== 201) || !json) {
+      // URL has no secret (auth is a Bearer header) — safe to log so the
+      // merchant can compare it with the EKQR console API docs on 4xx.
+      try { console.error(`[EKQR] create order failed: POST ${url} -> HTTP ${status}`); } catch { /* log-only */ }
       throw new Error(`EKQR create order HTTP ${status}`.slice(0, 200));
     }
     // Echo must match our order id (binds response to request).
