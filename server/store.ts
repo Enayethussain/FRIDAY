@@ -75,7 +75,8 @@ interface StoreShape {
   // Anti-piracy device bindings (one device per license): email -> device.
   // First active-license check binds the device; a different deviceId with
   // the same active license is rejected (anti-sharing). Cleared with grant.
-  licenseBindings: Record<string, { deviceId: string; plan: 'PRO' | 'PLUS'; boundAt: number; updatedAt: number }>;
+  // status mirrors the grant state at bind time (live checks re-read grant).
+  licenseBindings: Record<string, { deviceId: string; plan: 'PRO' | 'PLUS'; status: 'active'; boundAt: number; updatedAt: number }>;
 }
 
 const STORE_VERSION = 2;
@@ -351,17 +352,17 @@ export class FridayStore {
   }
 
   /** Anti-piracy device binding for a license email. */
-  getLicenseBinding(email: string): { deviceId: string; plan: 'PRO' | 'PLUS'; boundAt: number } | null {
+  getLicenseBinding(email: string): { deviceId: string; plan: 'PRO' | 'PLUS'; status: 'active'; boundAt: number } | null {
     const b = this.data.licenseBindings[this.normEmail(email)];
     if (!b || !b.deviceId) return null;
-    return { deviceId: b.deviceId, plan: b.plan, boundAt: b.boundAt };
+    return { deviceId: b.deviceId, plan: b.plan, status: 'active', boundAt: b.boundAt };
   }
 
   /** First-time active-license login binds the device. Never rebinds here. */
   bindLicenseDevice(email: string, deviceId: string, plan: 'PRO' | 'PLUS'): void {
     const key = this.normEmail(email);
     if (!key || !key.includes('@') || !deviceId) return;
-    this.data.licenseBindings[key] = { deviceId: deviceId.slice(0, 128), plan, boundAt: Date.now(), updatedAt: Date.now() };
+    this.data.licenseBindings[key] = { deviceId: deviceId.slice(0, 128), plan, status: 'active', boundAt: Date.now(), updatedAt: Date.now() };
     this.save();
   }
 

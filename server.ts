@@ -2178,7 +2178,7 @@ import { createV1Router } from './server/v1.js';
 import { createCashfreeRouter } from './server/cashfree.js';
 import { effectivePlan, productById } from './server/billing.js';
 import { createPaymentRouter, createWebhookHandler } from './server/payments/router.js';
-import { createLicenseRouter } from './server/license.js';
+import { createLicenseRouter, createStrictLicenseHandler } from './server/license.js';
 import { selectProvider } from './server/payments/providers/index.js';
 const fridayConfig = loadConfig();
 const aiRouter = new AIRouter(fridayConfig);
@@ -2233,6 +2233,15 @@ app.use('/api/payment', createPaymentRouter({
 // [License hook] one-device-per-license anti-piracy check.
 // Stateless verdicts; bindings persist in FridayStore (licenseBindings).
 app.use('/api/license', createLicenseRouter({
+  store: fridayStore,
+  redact: redactSecrets,
+  log: (...a: any[]) => console.log(...a),
+  logError: (...a: any[]) => console.error(...a),
+}));
+
+// Strict paid gate: POST /api/check-license { email, deviceId }.
+// No active subscription is itself a reject (unlike the lenient gate above).
+app.post('/api/check-license', createStrictLicenseHandler({
   store: fridayStore,
   redact: redactSecrets,
   log: (...a: any[]) => console.log(...a),

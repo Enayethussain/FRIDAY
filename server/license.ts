@@ -33,6 +33,35 @@ function clientIp(req: express.Request): string {
   return (fwd.split(',')[0] || '').trim() || req.ip || 'unknown';
 }
 
+// Shared verdict core: grant + binding state machine. Both the lenient
+// app-boot gate (/api/license/check) and the strict paid gate
+// (POST /api/check-license) read this — one state, two policies.
+export type LicenseVerdict =
+  | { kind: 'invalid'; code: 'EMAIL_REQUIRED' | 'DEVICE_REQUIRED' }
+  | { kind: 'no_subscription' }
+  | { kind: 'bound'; first: boolean; plan: 'PRO' | 'PLUS'; boundAt: number }
+  | { kind: 'mismatch'; plan: 'PRO' | 'PLUS' };
+
+export function verifyLicenseBinding(
+  store: FridayStore, email: string, deviceId: string
+): LicenseVerdict {
+  const mail = String(email || '').trim().toLowerCase().slice(0, 128);
+  const dev = String(deviceId || '').trim().slice(0, 128);
+  if (!mail || !mail.includes('@')) return { kind: 'invalid', code: 'EMAIL_REQUIRED' };
+  if (!dev) return { kind: 'invalid', code: 'DEVICE_REQUIRED' };
+  const grant = store.getEmailGrant(mail);
+  if (!grant) return { kind: 'no_subscription' };
+  const binding = store.getLicenseBinding(mail);
+  if (!binding) {
+    store.bindLicenseDevice(mail, dev, grant.plan);
+    return { kind: 'bound', first: true, plan: grant.plan, boundAt: Date.now() };
+  }
+  if (binding.deviceId === dev) {
+    return { kind: 'bound', first: false, plan: grant.plan, boundAt: binding.boundAt };
+  }
+  return { kind: 'mismatch', plan: grant.plan };
+}
+
 export function createLicenseRouter(deps: LicenseDeps): express.Router {
   const { store, redact, logError } = deps;
   const r = express.Router();
@@ -45,40 +74,34 @@ export function createLicenseRouter(deps: LicenseDeps): express.Router {
         return;
       }
       const body = (req.body || {}) as Record<string, unknown>;
-      const email = String(body.email ?? body.customer_email ?? '').trim().toLowerCase().slice(0, 128);
-      const deviceId = String(body.deviceId ?? body.device_id ?? '').trim().slice(0, 128);
-      if (!email || !email.includes('@')) {
-        res.status(400).json({ success: false, code: 'EMAIL_REQUIRED', error: 'License check ke liye email chahiye.' });
+      const verdict = verifyLicenseBinding(
+        store,
+        String(body.email ?? body.customer_email ?? ''),
+        String(body.deviceId ?? body.device_id ?? '')
+      );
+      if (verdict.kind === 'invalid') {
+        res.status(400).json({
+          success: false,
+          code: verdict.code,
+          error: verdict.code === 'EMAIL_REQUIRED' ? 'License check ke liye email chahiye.' : 'License check ke liye device ID chahiye.',
+        });
         return;
       }
-      if (!deviceId) {
-        res.status(400).json({ success: false, code: 'DEVICE_REQUIRED', error: 'License check ke liye device ID chahiye.' });
-        return;
-      }
-      // No active purchase -> nothing to bind; FREE users always pass.
-      const grant = store.getEmailGrant(email);
-      if (!grant) {
+      // Lenient policy: no active purchase -> nothing to bind; FREE users pass.
+      if (verdict.kind === 'no_subscription') {
         res.json({ success: true, isAuthorized: true, licensed: false, plan: 'FREE', bound: false });
         return;
       }
-      // First active-license sighting binds this device permanently.
-      const binding = store.getLicenseBinding(email);
-      if (!binding) {
-        store.bindLicenseDevice(email, deviceId, grant.plan);
-        res.json({ success: true, isAuthorized: true, licensed: true, plan: grant.plan, bound: true, boundAt: Date.now() });
+      if (verdict.kind === 'bound') {
+        res.json({ success: true, isAuthorized: true, licensed: true, plan: verdict.plan, bound: true, boundAt: verdict.boundAt });
         return;
       }
-      // Same device -> pass. Different device -> anti-sharing reject.
-      if (binding.deviceId === deviceId) {
-        res.json({ success: true, isAuthorized: true, licensed: true, plan: grant.plan, bound: true, boundAt: binding.boundAt });
-        return;
-      }
-      logError(`license device mismatch email=${redact(email)}`);
+      logError(`license device mismatch email=${redact(String(body.email ?? ''))}`);
       res.json({
         success: true,
         isAuthorized: false,
         licensed: true,
-        plan: grant.plan,
+        plan: verdict.plan,
         bound: true,
         reason: 'DEVICE_MISMATCH',
         message: 'Ye license kisi aur device par active hai. Ek license = ek device.',
@@ -92,4 +115,68 @@ export function createLicenseRouter(deps: LicenseDeps): express.Router {
   });
 
   return r;
+}
+
+/**
+ * Strict paid gate: POST /api/check-license { email, deviceId }.
+ * Exact contract — no active subscription is itself a reject:
+ *   none      -> { isAuthorized:false, message:'No active subscription found.' }
+ *   first     -> { isAuthorized:true,  message:'Device bound successfully.' }
+ *   match     -> { isAuthorized:true,  message:'Access granted.' }
+ *   mismatch  -> { isAuthorized:false, message:'License is already bound to another device. Sharing is not allowed.' }
+ */
+export function createStrictLicenseHandler(deps: LicenseDeps): express.RequestHandler {
+  const { store, redact, logError } = deps;
+  return (req, res) => {
+    try {
+      const ip = clientIp(req);
+      if (limited(ip)) {
+        res.status(429).json({ success: false, isAuthorized: false, code: 'RATE_LIMITED', message: 'Too many requests. Try again shortly.' });
+        return;
+      }
+      const body = (req.body || {}) as Record<string, unknown>;
+      const verdict = verifyLicenseBinding(
+        store,
+        String(body.email ?? body.customer_email ?? ''),
+        String(body.deviceId ?? body.device_id ?? '')
+      );
+      if (verdict.kind === 'invalid') {
+        res.status(400).json({
+          success: false,
+          isAuthorized: false,
+          code: verdict.code,
+          message: verdict.code === 'EMAIL_REQUIRED' ? 'Email and deviceId are required.' : 'Email and deviceId are required.',
+        });
+        return;
+      }
+      if (verdict.kind === 'no_subscription') {
+        res.json({ success: true, isAuthorized: false, licensed: false, message: 'No active subscription found.' });
+        return;
+      }
+      if (verdict.kind === 'bound') {
+        res.json({
+          success: true,
+          isAuthorized: true,
+          licensed: true,
+          plan: verdict.plan,
+          bound: true,
+          message: verdict.first ? 'Device bound successfully.' : 'Access granted.',
+        });
+        return;
+      }
+      logError(`license strict mismatch email=${redact(String(body.email ?? ''))}`);
+      res.json({
+        success: true,
+        isAuthorized: false,
+        licensed: true,
+        plan: verdict.plan,
+        reason: 'DEVICE_MISMATCH',
+        message: 'License is already bound to another device. Sharing is not allowed.',
+      });
+    } catch (e: any) {
+      logError(`license strict exception: ${redact(String(e?.message || e)).slice(0, 120)}`);
+      // Strict gate fails CLOSED on crash (paid gate; retry is cheap).
+      res.status(500).json({ success: false, isAuthorized: false, message: 'License verification failed. Try again.' });
+    }
+  };
 }
