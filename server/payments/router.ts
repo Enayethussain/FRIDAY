@@ -6,7 +6,7 @@
 import express from 'express';
 import { paymentPlans, publicPlans, periodPrices, parsePeriod, PERIOD_DAYS, type BillingPeriod } from './plans.js';
 import type { FridayStore } from '../store.js';
-import type { PaymentOrder, PaymentProvider } from './types.js';
+import type { PaymentOrder, PaymentProvider, ProviderOrderResult } from './types.js';
 
 const ORDER_TTL_MS = 20 * 60 * 1000;
 const RECONCILE_MIN_MS = 30 * 1000;
@@ -350,8 +350,9 @@ export function createPaymentRouter(deps: {
         res.status(500).json({ success: false, code: 'ORDER_SAVE_FAILED', error: `Payment order save nahi ho paya. Dobara try karo.${reason ? ` (${reason})` : ''}` });
         return;
       }
+      let created: ProviderOrderResult | null = null;
       try {
-        const created = await provider.createOrder({
+        created = await provider.createOrder({
           internalOrderId: orderId,
           amountPaise: order.amountPaise,
           redirectUrl,
@@ -386,11 +387,8 @@ export function createPaymentRouter(deps: {
         period, expiresAt: order.expiresAt,
       });
     } catch (e: any) {
-      const exMsg = redact(String(e?.message || e)).slice(0, 200);
-      logError(`payment create exception: ${exMsg.slice(0, 160)}`);
-      // Temporary merchant diagnostic: include the exception text so the
-      // dashboard notice reveals WHERE valid-data orders die (outer try).
-      res.status(500).json({ success: false, code: 'SERVER_ERROR', error: `Payment order create nahi ho paya.${exMsg ? ` (${exMsg})` : ''}` });
+      logError(`payment create exception: ${redact(String(e?.message || e)).slice(0, 160)}`);
+      res.status(500).json({ success: false, code: 'SERVER_ERROR', error: 'Payment order create nahi ho paya.' });
     }
   });
 
