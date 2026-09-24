@@ -72,6 +72,10 @@ interface StoreShape {
   // Email-linked premium grants (reinstall-proof): email -> plan + expiry.
   // Written ONLY on verified fulfillment/refund; read with expiry check.
   emailGrants: Record<string, { plan: 'PRO' | 'PLUS'; expiryAt: number; updatedAt: number }>;
+  // Anti-piracy device bindings (one device per license): email -> device.
+  // First active-license check binds the device; a different deviceId with
+  // the same active license is rejected (anti-sharing). Cleared with grant.
+  licenseBindings: Record<string, { deviceId: string; plan: 'PRO' | 'PLUS'; boundAt: number; updatedAt: number }>;
 }
 
 const STORE_VERSION = 2;
@@ -90,7 +94,7 @@ export class FridayStore {
   }
 
   private blank(): StoreShape {
-    return { version: STORE_VERSION, users: {}, usage: {}, settings: {}, paymentOrders: {}, paymentOrdersByProvider: {}, webhookEvents: {}, refunds: {}, emailGrants: {} };
+    return { version: STORE_VERSION, users: {}, usage: {}, settings: {}, paymentOrders: {}, paymentOrdersByProvider: {}, webhookEvents: {}, refunds: {}, emailGrants: {}, licenseBindings: {} };
   }
 
   private load(): StoreShape {
@@ -111,6 +115,7 @@ export class FridayStore {
         webhookEvents: obj(raw?.webhookEvents) as StoreShape['webhookEvents'] || base.webhookEvents,
         refunds: obj(raw?.refunds) as StoreShape['refunds'] || base.refunds,
         emailGrants: obj(raw?.emailGrants) as StoreShape['emailGrants'] || base.emailGrants,
+        licenseBindings: obj(raw?.licenseBindings) as StoreShape['licenseBindings'] || base.licenseBindings,
       };
     } catch {
       // Corrupt file: back it up, never delete user data.
@@ -333,6 +338,8 @@ export class FridayStore {
       delete this.data.emailGrants[key];
       this.save();
     }
+    // Refund/expiry releases the device binding too — a new purchase rebinds.
+    this.clearLicenseBinding(email);
   }
 
   /** Unexpired email grant or null. Never invents premium. */
@@ -341,6 +348,30 @@ export class FridayStore {
     if (!g) return null;
     if ((g.plan !== 'PRO' && g.plan !== 'PLUS') || !(g.expiryAt > Date.now())) return null;
     return { plan: g.plan, expiryAt: g.expiryAt };
+  }
+
+  /** Anti-piracy device binding for a license email. */
+  getLicenseBinding(email: string): { deviceId: string; plan: 'PRO' | 'PLUS'; boundAt: number } | null {
+    const b = this.data.licenseBindings[this.normEmail(email)];
+    if (!b || !b.deviceId) return null;
+    return { deviceId: b.deviceId, plan: b.plan, boundAt: b.boundAt };
+  }
+
+  /** First-time active-license login binds the device. Never rebinds here. */
+  bindLicenseDevice(email: string, deviceId: string, plan: 'PRO' | 'PLUS'): void {
+    const key = this.normEmail(email);
+    if (!key || !key.includes('@') || !deviceId) return;
+    this.data.licenseBindings[key] = { deviceId: deviceId.slice(0, 128), plan, boundAt: Date.now(), updatedAt: Date.now() };
+    this.save();
+  }
+
+  /** Cleared with the grant (refund/expiry path) so a new purchase rebinds. */
+  clearLicenseBinding(email: string): void {
+    const key = this.normEmail(email);
+    if (key && this.data.licenseBindings[key]) {
+      delete this.data.licenseBindings[key];
+      this.save();
+    }
   }
 }
 

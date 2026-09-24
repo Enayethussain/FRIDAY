@@ -97,6 +97,7 @@ import { globalNativeGestureBridge, isNativeGestureSupported } from './services/
 import { HUDShare } from './components/HUDShare';
 import { globalDeviceLink } from './services/DeviceLinkManager';
 import { globalAuthManager } from './services/AuthManager';
+import { checkLicense, subscribeLicense, type LicenseStatus } from './services/LicenseService';
 // App Open ads: verified entitlement + critical-operation guard (native owns SDK).
 import { initAdsEntitlement, setCriticalBusy } from './services/AdsService';
 // Central plan/entitlement system (server-authoritative, cached safely).
@@ -355,7 +356,9 @@ export default function App() {
   const [isShareOpen, setIsShareOpen] = useState(false);
   // Subscription + upgrade prompt (central entitlement gates below).
   const [isSubscriptionOpen, setIsSubscriptionOpen] = useState(false);
-  const [isUpdateOpen, setIsUpdateOpen] = useState(false);
+  // Anti-piracy license verdict (one device per license). Locked only on
+  // explicit backend reject — never on network errors.
+  const [license, setLicense] = useState<LicenseStatus | null>(null);  const [isUpdateOpen, setIsUpdateOpen] = useState(false);
   const [updateCheck, setUpdateCheck] = useState<UpdateCheckResult | null>(null);
   const [upgradeAsk, setUpgradeAsk] = useState<{ featureLabel: string; requiredPlan: 'PRO' | 'PLUS' } | null>(null);
   const isMobileUI = isMobileApp();
@@ -396,6 +399,10 @@ export default function App() {
       if (profile.isAuthenticated && globalWakewordManager.getConfig().enabled) {
         globalWakewordManager.start();
       }
+      // License check on every fresh authentication (device binding verdict).
+      if (profile.isAuthenticated) {
+        void checkLicense().then(setLicense).catch(() => {});
+      }
     });
 
     const unsubMem = globalMemoryManager.subscribe((newMems) => {
@@ -427,7 +434,10 @@ export default function App() {
     // Auto-start wakeword if user is authenticated and enabled
     if (globalAuthManager.getProfile().isAuthenticated) {
       globalWakewordManager.start();
+      // Already logged in (returning session): verify license binding now.
+      void checkLicense().then(setLicense).catch(() => {});
     }
+    const unsubLicense = subscribeLicense(setLicense);
 
     // Initialize Proactive Assistant & Screen Assist (Android only).
     // Screen Assist is strictly opt-in: init() only subscribes; polling starts
@@ -643,6 +653,7 @@ export default function App() {
 
     return () => {
       unsubAuth();
+      unsubLicense();
       unsubMem();
       unsubCurriculum();
       unsubWake();
@@ -2010,6 +2021,38 @@ export default function App() {
             onAuthenticate={(passcode) => globalAuthManager.authenticateWithPasscode(passcode)}
           />
         )
+      )}
+
+      {/* License lock: active license bound to a DIFFERENT device (anti-sharing).
+          Shown ONLY on explicit backend reject — FREE users and network errors
+          never see this. Verify re-checks; Plans opens subscription. */}
+      {authProfile.isAuthenticated && license && !license.isAuthorized && (
+        <div className="fixed inset-0 z-[10002] flex items-center justify-center bg-slate-950/85 backdrop-blur-md p-4" role="dialog" aria-label="License verification">
+          <div className="w-full max-w-sm rounded-2xl bg-slate-900 border border-red-500/40 p-6 text-center shadow-2xl">
+            <div className="text-3xl mb-2">🔒</div>
+            <div className="text-sm font-mono font-bold text-slate-100">LICENSE LOCKED</div>
+            <p className="text-xs text-slate-400 mt-2 leading-relaxed">
+              {license.message || 'Ye license kisi aur device par active hai. Ek license = ek device.'}
+            </p>
+            <p className="mt-1 text-[11px] font-mono text-slate-500">Plan: {license.plan || 'PRO'}</p>
+            <div className="mt-4 flex gap-2">
+              <button
+                type="button"
+                onClick={() => { setLicense(null); void checkLicense().then(setLicense).catch(() => {}); }}
+                className="flex-1 px-4 py-2.5 min-h-[44px] rounded-xl border border-slate-700 text-slate-200 font-bold text-xs cursor-pointer"
+              >
+                Verify Again
+              </button>
+              <button
+                type="button"
+                onClick={() => setIsSubscriptionOpen(true)}
+                className="flex-1 px-4 py-2.5 min-h-[44px] rounded-xl bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold text-xs cursor-pointer"
+              >
+                View Plans
+              </button>
+            </div>
+          </div>
+        </div>
       )}
 
       {/* Bottom Telemetry & Voice Hints */}

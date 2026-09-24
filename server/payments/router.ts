@@ -210,6 +210,12 @@ export function createPaymentRouter(deps: {
     store.savePaymentOrder(fresh);
     const now = Date.now();
     const termDays = Number(fresh.durationDays) > 0 ? Number(fresh.durationDays) : 30;
+    // Reinstall-proof email grant: the payer email from checkout owns this
+    // license term. License device-binding reads this grant (setEmailGrant
+    // validates + ignores bad emails internally).
+    if (fresh.email && fresh.email.includes('@')) {
+      store.setEmailGrant(fresh.email, fresh.planId === 'pro' ? 'PRO' : 'PLUS', now + termDays * 86400000);
+    }
     store.setSubscription(fresh.userKey, {
       status: plan.subscriptionStatus as never,
       productId: '',
@@ -341,6 +347,7 @@ export function createPaymentRouter(deps: {
         currency: 'INR', provider: provider.name, providerOrderId: '', checkoutUrl: '',
         checkoutExpiresAt: 0, status: 'created', providerPaymentId: '', failureCode: '',
         expiresAt: now + ORDER_TTL_MS, fulfilledAt: 0, createdAt: now, updatedAt: now,
+        email: customerEmail.toLowerCase(),
       };
       try {
         store.savePaymentOrder(order);
