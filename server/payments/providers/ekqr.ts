@@ -107,7 +107,7 @@ export class EkqrProvider implements PaymentProvider {
     return { 'Content-Type': 'application/json', Authorization: `Bearer ${env('EKQR_API_KEY')}` };
   }
 
-  async createOrder(args: { internalOrderId: string; amountPaise: number; redirectUrl: string; expireAfterSec: number; planLabel?: string; customer?: { name: string; mobile: string; email?: string } }): Promise<ProviderOrderResult> {
+  async createOrder(args: { internalOrderId: string; amountPaise: number; redirectUrl: string; expireAfterSec: number; planLabel?: string; customer?: { name: string; mobile: string; email?: string }; udf1?: string }): Promise<ProviderOrderResult> {
     if (!this.isConfigured()) throw new Error('EKQR not configured (EKQR_BASE_URL / EKQR_API_KEY missing)');
     const url = `${base()}${env('EKQR_CREATE_PATH', '/api/create_order')}`;
     // Per portal.ekqr.in docs: auth `key` lives IN the JSON body.
@@ -124,6 +124,8 @@ export class EkqrProvider implements PaymentProvider {
         customer_mobile: args.customer?.mobile || undefined,
         customer_email: args.customer?.email || undefined,
         redirect_url: args.redirectUrl,
+        // Gateway passthrough: Telegram chatId returns verbatim in webhook.
+        udf1: args.udf1 ? String(args.udf1).slice(0, 25) : undefined,
       }),
     });
     if ((status !== 200 && status !== 201) || !json) {

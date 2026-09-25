@@ -77,6 +77,11 @@ interface StoreShape {
   // the same active license is rejected (anti-sharing). Cleared with grant.
   // status mirrors the grant state at bind time (live checks re-read grant).
   licenseBindings: Record<string, { deviceId: string; plan: 'PRO' | 'PLUS'; status: 'active'; boundAt: number; updatedAt: number }>;
+  // Telegram bot QR orders: client_txn_id -> order (EKQR chatId in udf1).
+  botOrders: Record<string, { clientTxnId: string; chatId: string; amount: number; amountPaise: number; customerName: string; status: 'created' | 'pending' | 'fulfilled' | 'failed'; providerOrderId: string; createdAt: number; updatedAt: number }>;
+  // License-key registry (bot sales): licenseKey -> record. deviceId null
+  // until first activation binds one phone (one device per license).
+  licenses: Record<string, { chatId: string; licenseKey: string; status: 'active'; deviceId: string | null; plan: 'PRO' | 'PLUS'; orderId: string; createdAt: number; boundAt: number }>;
 }
 
 const STORE_VERSION = 2;
@@ -95,7 +100,7 @@ export class FridayStore {
   }
 
   private blank(): StoreShape {
-    return { version: STORE_VERSION, users: {}, usage: {}, settings: {}, paymentOrders: {}, paymentOrdersByProvider: {}, webhookEvents: {}, refunds: {}, emailGrants: {}, licenseBindings: {} };
+    return { version: STORE_VERSION, users: {}, usage: {}, settings: {}, paymentOrders: {}, paymentOrdersByProvider: {}, webhookEvents: {}, refunds: {}, emailGrants: {}, licenseBindings: {}, botOrders: {}, licenses: {} };
   }
 
   private load(): StoreShape {
@@ -117,6 +122,8 @@ export class FridayStore {
         refunds: obj(raw?.refunds) as StoreShape['refunds'] || base.refunds,
         emailGrants: obj(raw?.emailGrants) as StoreShape['emailGrants'] || base.emailGrants,
         licenseBindings: obj(raw?.licenseBindings) as StoreShape['licenseBindings'] || base.licenseBindings,
+        botOrders: obj(raw?.botOrders) as StoreShape['botOrders'] || base.botOrders,
+        licenses: obj(raw?.licenses) as StoreShape['licenses'] || base.licenses,
       };
     } catch {
       // Corrupt file: back it up, never delete user data.
@@ -349,6 +356,39 @@ export class FridayStore {
     if (!g) return null;
     if ((g.plan !== 'PRO' && g.plan !== 'PLUS') || !(g.expiryAt > Date.now())) return null;
     return { plan: g.plan, expiryAt: g.expiryAt };
+  }
+
+  // ---------- Telegram bot orders (client_txn_id -> order) ----------
+
+  saveBotOrder(o: StoreShape['botOrders'][string]): void {
+    this.data.botOrders[o.clientTxnId] = o;
+    this.save();
+  }
+
+  getBotOrder(clientTxnId: string): StoreShape['botOrders'][string] | null {
+    return this.data.botOrders[String(clientTxnId || '')] || null;
+  }
+
+  // ---------- License-key registry (bot sales, one device each) ----------
+
+  /** License keys are uppercase FRIDAY-XXXX-XXXX; lookup is case-insensitive. */
+  getLicense(key: string): StoreShape['licenses'][string] | null {
+    return this.data.licenses[String(key || '').trim().toUpperCase()] || null;
+  }
+
+  saveLicense(r: StoreShape['licenses'][string]): void {
+    this.data.licenses[String(r.licenseKey || '').trim().toUpperCase()] = r;
+    this.save();
+  }
+
+  /** First activation binds one phone. Never rebinds, never unbinds here. */
+  bindLicenseDeviceKey(licenseKey: string, deviceId: string): boolean {
+    const r = this.getLicense(licenseKey);
+    if (!r || r.deviceId) return false;
+    r.deviceId = String(deviceId || '').slice(0, 128);
+    r.boundAt = Date.now();
+    this.save();
+    return true;
   }
 
   /** Anti-piracy device binding for a license email. */

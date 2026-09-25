@@ -7,6 +7,8 @@ import express from 'express';
 import { paymentPlans, publicPlans, periodPrices, parsePeriod, PERIOD_DAYS, type BillingPeriod } from './plans.js';
 import type { FridayStore } from '../store.js';
 import type { PaymentOrder, PaymentProvider, ProviderOrderResult } from './types.js';
+import { generateLicenseKey } from '../bot/licenseKeys.js';
+import { deliverLicenseApk } from '../bot/telegram.js';
 
 const ORDER_TTL_MS = 20 * 60 * 1000;
 const RECONCILE_MIN_MS = 30 * 1000;
@@ -56,6 +58,84 @@ export interface WebhookDeps {
  * authentication, idempotent event keys, re-query before touching
  * entitlements, user data never deleted.
  */
+/**
+ * Telegram bot-order webhook dispatch. Returns true when it handled the
+ * response (caller must return). Verification chain (anti-spoof):
+ *   1. client_txn_id must exist in our botOrders table (ORD_… we minted),
+ *   2. callback status must read success-like,
+ *   3. provider status re-query must be COMPLETED + amount match.
+ * Only then: license key minted + APK delivered to the chatId from udf1.
+ */
+async function tryBotFulfillment(
+  req: express.Request,
+  res: express.Response,
+  store: FridayStore,
+  provider: PaymentProvider,
+  logError: (...a: any[]) => void
+): Promise<boolean> {
+  let body: any = null;
+  try {
+    const raw = typeof (req as any).rawBody === 'string' && (req as any).rawBody
+      ? String((req as any).rawBody)
+      : Buffer.isBuffer(req.body) ? req.body.toString('utf8') : (typeof req.body === 'object' ? JSON.stringify(req.body) : String(req.body || ''));
+    if (!raw) return false;
+    body = JSON.parse(raw);
+  } catch {
+    return false;
+  }
+  if (!body || typeof body !== 'object') return false;
+  const data = (body.data && typeof body.data === 'object' ? body.data : {}) as Record<string, unknown>;
+  const str = (v: unknown) => String(v ?? '').trim();
+  const txnId = str(body.client_txn_id || body.order_id || body.txn_id || body.merchant_order_id || data.client_txn_id || data.order_id || data.txn_id);
+  if (!txnId) return false;
+  const botOrder = store.getBotOrder(txnId);
+  if (!botOrder) return false; // not ours -> fall through to HMAC flow
+  if (botOrder.status === 'fulfilled') {
+    res.json({ status: 'handled', duplicate: true });
+    return true;
+  }
+  const chatId = str((body as any).udf1 || data.udf1) || botOrder.chatId;
+  const cbStatus = str(body.status || body.payment_status || data.status || data.payment_status).toLowerCase();
+  const successLike = /^(success|successful|paid|completed)$/.test(cbStatus);
+  if (!successLike) {
+    res.json({ status: 'ignored' });
+    return true;
+  }
+  // Source of truth: re-query the gateway before minting anything.
+  let st: Awaited<ReturnType<PaymentProvider['getPaymentStatus']>> | null = null;
+  try {
+    st = await provider.getPaymentStatus(botOrder.providerOrderId || txnId);
+  } catch {
+    st = null;
+  }
+  if (!st || st.state !== 'COMPLETED') {
+    botOrder.status = 'pending';
+    botOrder.updatedAt = Date.now();
+    store.saveBotOrder(botOrder);
+    res.json({ status: 'pending' });
+    return true;
+  }
+  if (st.amountPaise !== botOrder.amountPaise) {
+    botOrder.status = 'failed';
+    botOrder.updatedAt = Date.now();
+    store.saveBotOrder(botOrder);
+    try { logError(`[Bot] amount mismatch order=${txnId}`); } catch { /* noop */ }
+    res.json({ status: 'handled', note: 'amount-mismatch' });
+    return true;
+  }
+  const licenseKey = generateLicenseKey((k) => !!store.getLicense(k));
+  botOrder.status = 'fulfilled';
+  botOrder.updatedAt = Date.now();
+  store.saveBotOrder(botOrder);
+  store.saveLicense({
+    chatId, licenseKey, status: 'active', deviceId: null,
+    plan: 'PRO', orderId: txnId, createdAt: Date.now(), boundAt: 0,
+  });
+  const delivered = await deliverLicenseApk(chatId, licenseKey, 'PRO').catch(() => false);
+  res.json({ status: 'handled', delivered });
+  return true;
+}
+
 export function createWebhookHandler(deps: WebhookDeps) {
   const { store, provider, redact, logError } = deps;
   // Per-IP rate limit buckets local to webhook traffic.
@@ -75,6 +155,10 @@ export function createWebhookHandler(deps: WebhookDeps) {
           return;
         }
       }
+      // Telegram bot orders dispatch FIRST (before the HMAC gate): matched by
+      // client_txn_id in our botOrders table. Spoof-proof because fulfillment
+      // requires a provider status re-query = COMPLETED + amount match.
+      if (await tryBotFulfillment(req, res, store, provider, logError)) return;
       const raw = typeof (req as any).rawBody === 'string' && (req as any).rawBody
         ? String((req as any).rawBody)
         : Buffer.isBuffer(req.body) ? req.body.toString('utf8') : String(req.body || '');

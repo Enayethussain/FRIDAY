@@ -2179,6 +2179,8 @@ import { createCashfreeRouter } from './server/cashfree.js';
 import { effectivePlan, productById } from './server/billing.js';
 import { createPaymentRouter, createWebhookHandler } from './server/payments/router.js';
 import { createLicenseRouter, createStrictLicenseHandler } from './server/license.js';
+import { createBotRouter } from './server/bot/routes.js';
+import { startTelegramBot } from './server/bot/bot.js';
 import { selectProvider } from './server/payments/providers/index.js';
 const fridayConfig = loadConfig();
 const aiRouter = new AIRouter(fridayConfig);
@@ -2245,6 +2247,15 @@ app.post('/api/check-license', createStrictLicenseHandler({
   store: fridayStore,
   redact: redactSecrets,
   log: (...a: any[]) => console.log(...a),
+  logError: (...a: any[]) => console.error(...a),
+}));
+
+// [Bot checkout hook] Telegram QR orders (same EKQR provider; chatId in udf1).
+app.use('/api', createBotRouter({
+  store: fridayStore,
+  provider: selectProvider(),
+  appUrl: fridayConfig.backendUrl || process.env.APP_URL || 'http://localhost:3000',
+  redact: redactSecrets,
   logError: (...a: any[]) => console.error(...a),
 }));
 
@@ -2506,6 +2517,8 @@ async function main() {
 
   server.listen(PORT, '0.0.0.0', () => {
     console.log(`[JARVIS] Core server running on http://0.0.0.0:${PORT}`);
+    // Telegram sales bot (no-op without TELEGRAM_BOT_TOKEN; owns SIGINT/SIGTERM).
+    void startTelegramBot().catch((e) => console.error('[Bot] start failed:', e?.message || e));
   });
 }
 

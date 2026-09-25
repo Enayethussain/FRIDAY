@@ -3,6 +3,7 @@ import { XCircle, Check, Loader2 } from 'lucide-react';
 import { getEntitlements, refreshEntitlements, subscribeEntitlements, type EntitlementSnapshot } from '../services/EntitlementService';
 import { lifecycleMessage } from '../services/BillingService';
 import { getPayPlans, createEkqrOrder, openCheckoutUrl, pollOrderStatus, getMyOrders, formatINR, loadPayer, savePayer, validatePayer, normMobile, type BillingPeriod, type OrderHistoryItem } from '../services/PaymentService';
+import { checkLicenseKey, getStoredLicenseKey } from '../services/LicenseService';
 import type { ThemeAccent } from '../types';
 import { THEMES } from '../utils/theme';
 
@@ -68,6 +69,9 @@ export function HUDSubscription({ isOpen, onClose, theme }: HUDSubscriptionProps
   const [payerName, setPayerName] = useState(() => { try { return loadPayer().name; } catch { return ''; } });
   const [payerMobile, setPayerMobile] = useState(() => { try { return loadPayer().mobile; } catch { return ''; } });
   const [payerEmail, setPayerEmail] = useState(() => { try { return loadPayer().email || ''; } catch { return ''; } });
+  // Telegram license-key activation (FRIDAY-XXXX-XXXX from the bot).
+  const [licenseKey, setLicenseKey] = useState(() => { try { return getStoredLicenseKey(); } catch { return ''; } });
+  const [keyBusy, setKeyBusy] = useState(false);
 
   const loadPrices = async () => {
     setPricesLoading(true);
@@ -312,6 +316,40 @@ export function HUDSubscription({ isOpen, onClose, theme }: HUDSubscriptionProps
         {notice && (
           <p className="mt-3 text-xs text-amber-300 bg-amber-500/10 border border-amber-500/30 rounded-xl px-3 py-2">{notice}</p>
         )}
+        <div className="mt-3 rounded-2xl border border-slate-800 bg-slate-900/50 p-4">
+          <h3 className="font-bold text-sm text-slate-100 mb-1">🔑 License Key <span className="font-mono font-normal text-slate-500">(Telegram bot se mili — FRIDAY-XXXX-XXXX)</span></h3>
+          <div className="flex gap-2">
+            <input
+              value={licenseKey}
+              onChange={(e) => setLicenseKey(e.target.value.toUpperCase())}
+              placeholder="FRIDAY-XXXX-XXXX"
+              autoComplete="off"
+              spellCheck={false}
+              maxLength={15}
+              className="flex-1 min-w-0 px-3 py-2 min-h-[44px] rounded-xl bg-slate-800 border border-slate-700 text-white text-sm font-mono uppercase placeholder:text-slate-500 placeholder:normal-case focus:outline-none focus:border-amber-500"
+            />
+            <button
+              type="button"
+              disabled={keyBusy || !licenseKey.trim()}
+              onClick={() => {
+                if (keyBusy) return;
+                setKeyBusy(true);
+                setNotice('');
+                void checkLicenseKey(licenseKey).then((s) => {
+                  setNotice(s.isAuthorized
+                    ? `License active ho gayi — ${s.plan} plan, isi phone par bound.`
+                    : (s.message || 'License verify nahi hui. Key check karke dobara try karo.'));
+                  void refreshEntitlements().catch(() => null);
+                }).catch(() => {
+                  setNotice('License verify nahi ho payi. Dobara try karo.');
+                }).finally(() => setKeyBusy(false));
+              }}
+              className="shrink-0 px-4 py-2 min-h-[44px] rounded-xl bg-amber-500 hover:bg-amber-400 font-bold text-sm text-slate-950 transition disabled:opacity-50"
+            >
+              {keyBusy ? 'Checking…' : 'Activate'}
+            </button>
+          </div>
+        </div>
         <div className="mt-3 rounded-2xl border border-slate-800 bg-slate-900/50 p-4">
           <h3 className="font-bold text-sm text-slate-100 mb-2">Order History</h3>
           {orders === null ? (

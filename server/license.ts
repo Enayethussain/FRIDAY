@@ -135,6 +135,38 @@ export function createStrictLicenseHandler(deps: LicenseDeps): express.RequestHa
         return;
       }
       const body = (req.body || {}) as Record<string, unknown>;
+      // --- License-key flow (Telegram bot sales): { licenseKey, deviceId }.
+      // Takes precedence when a key is supplied. Null deviceId = first
+      // activation binds this phone; a different phone is rejected.
+      const rawKey = String(body.licenseKey ?? body.license_key ?? '').trim();
+      if (rawKey) {
+        const keyDeviceId = String(body.deviceId ?? body.device_id ?? '').trim().slice(0, 128);
+        if (!keyDeviceId) {
+          res.status(400).json({ success: false, isAuthorized: false, code: 'DEVICE_REQUIRED', message: 'Email and deviceId are required.' });
+          return;
+        }
+        const record = store.getLicense(rawKey);
+        if (!record) {
+          res.json({ success: true, isAuthorized: false, licensed: false, message: 'Invalid license key.' });
+          return;
+        }
+        if (record.status !== 'active') {
+          res.json({ success: true, isAuthorized: false, licensed: true, plan: record.plan, message: 'License is not active.' });
+          return;
+        }
+        if (!record.deviceId) {
+          store.bindLicenseDeviceKey(rawKey, keyDeviceId);
+          res.json({ success: true, isAuthorized: true, licensed: true, plan: record.plan, bound: true, message: 'Device bound successfully.' });
+          return;
+        }
+        if (record.deviceId === keyDeviceId) {
+          res.json({ success: true, isAuthorized: true, licensed: true, plan: record.plan, bound: true, message: 'Access granted.' });
+          return;
+        }
+        logError('license key device mismatch');
+        res.json({ success: true, isAuthorized: false, licensed: true, plan: record.plan, reason: 'DEVICE_MISMATCH', message: 'Device limit reached. License is bound to another phone.' });
+        return;
+      }
       const verdict = verifyLicenseBinding(
         store,
         String(body.email ?? body.customer_email ?? ''),

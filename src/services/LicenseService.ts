@@ -57,8 +57,7 @@ export function getLicenseEmail(): string {
   return '';
 }
 
-export async function checkLicense(): Promise<LicenseStatus> {
-  let email = getLicenseEmail();
+export async function checkLicense(): Promise<LicenseStatus> {  let email = getLicenseEmail();
   if (!email) {
     try {
       const { auth } = await import('../lib/firebase');
@@ -98,4 +97,51 @@ export async function checkLicense(): Promise<LicenseStatus> {
   }
   emit();
   return getLicenseStatus();
+}
+
+/**
+ * Telegram license-key activation: POST /api/check-license { licenseKey, deviceId }.
+ * First activation binds this phone (one device per key). The key is stored
+ * on-device so future boots re-verify silently.
+ */
+export async function checkLicenseKey(rawKey: string): Promise<LicenseStatus> {
+  const licenseKey = String(rawKey || '').trim().toUpperCase();
+  if (!licenseKey) {
+    return { ...getLicenseStatus(), message: 'License key likho.' };
+  }
+  try {
+    const ctrl = new AbortController();
+    const t = setTimeout(() => ctrl.abort(), 15000);
+    const res = await fetch(apiUrl('/api/check-license'), {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ licenseKey, deviceId: getDeviceId() }),
+      signal: ctrl.signal,
+    });
+    clearTimeout(t);
+    const j = await res.json().catch(() => null);
+    if (!j) throw new Error('bad reply');
+    current = {
+      isAuthorized: j.isAuthorized === true,
+      licensed: j.isAuthorized === true && (j.licensed !== false),
+      plan: String(j.plan || (j.isAuthorized ? 'PRO' : 'FREE')),
+      bound: !!j.bound,
+      reason: String(j.reason || ''),
+      message: String(j.message || ''),
+      state: 'ok',
+      checkedAt: Date.now(),
+    };
+    if (current.isAuthorized) {
+      try { localStorage.setItem('friday_license_key', licenseKey); } catch { /* best-effort */ }
+    }
+  } catch {
+    current = { ...current, state: 'degraded', message: 'Server reachable nahi hai. Internet check karke dobara try karo.' };
+  }
+  emit();
+  return getLicenseStatus();
+}
+
+/** Stored Telegram license key (if the user activated one). */
+export function getStoredLicenseKey(): string {
+  try { return localStorage.getItem('friday_license_key') || ''; } catch { return ''; }
 }

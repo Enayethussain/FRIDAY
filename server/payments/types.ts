@@ -85,6 +85,8 @@ export interface PaymentProvider {
     internalOrderId: string; amountPaise: number; redirectUrl: string; expireAfterSec: number;
     planLabel?: string;
     customer?: { name: string; mobile: string; email?: string };
+    /** Gateway user-defined passthrough (Telegram chatId returns in webhook). */
+    udf1?: string;
   }): Promise<ProviderOrderResult>;
   getPaymentStatus(internalOrderId: string): Promise<ProviderStatusResult>;
   /** Returns verified event or null when signature/auth fails. */
